@@ -1,0 +1,50 @@
+# 配置嵌入式服务器(如果8080不可用，会指定一个随机可用端口)
+server:
+  port: 8080
+  #port: 8443
+  #ssl:
+  #  key-store: classpath:mykeys.jks
+  #  key-store-password: letmein
+  #  key-password: letmein
+
+  
+# 配置mysql数据源
+spring:
+  sql:
+    init:
+      mode: always
+      platform: mysql
+      username: root
+      password: root
+      schema-locations: classpath*:schema.sql
+      #data-locations: classpath*:data.sql
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/tacocloud
+    username: root
+    password: root    
+    
+  jpa:
+    hibernate:
+      ddl-auto: none    
+      
+  output:
+    ansi:
+      enabled: always
+
+# 日志      
+logging:
+#  path: ./logs
+#  file: TacoCloud.log
+  level:
+    root: INFO
+    org.springframework.security: DEBUG
+    
+# 应用属性
+taco:
+  orders:
+    page-size: 10
+  
+    
+
+

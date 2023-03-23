@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	
+	<!-- spring boot logback日志输出配置颜色转换器 -->
+	<conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
+	<conversionRule conversionWord="wex" converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter"/>
+	<conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter"/>
+	
+	<property name="PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS}  %clr(%-5p) %magenta(${PID:-}) --- [  %t] %cyan(%-40.40logger{39}) : %m%n"/>
+	
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${PATTERN}</pattern>
+        </encoder>
+	</appender>
+	
+	<root level="INFO">
+		<appender-ref ref="STDOUT"/>
+	</root>
+	
+	<logger name="root" level="INFO"/>
+	
+</configuration>

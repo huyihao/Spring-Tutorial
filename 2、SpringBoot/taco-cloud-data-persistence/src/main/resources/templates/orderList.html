@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" 
+      xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <title>Taco Orders</title>
+    <link rel="stylesheet" th:href="@{/styles.css}" />
+  </head>
+  
+  <body>  
+	  <img th:src="@{/images/TacoCloud.png}"></img>  
+	  <h2>Taco orders:</h2><br/>
+	  <table cellspacing="15" th:each="order : ${orders}">
+	  	  <tr>
+	  	  	  <td>order id:</td>
+	  	  	  <td><span th:text="${order.id}"></span></td>
+	  	  </tr>
+	  	  <tr>
+	  	  	  <td>placedAt:</td>
+	  	  	  <td><span th:text="${order.placedAt}"></span></td>
+	  	  </tr>
+	  	  <tr>
+	  	  	  <td>DeliveryName:</td>
+	  	  	  <td><span th:text="${order.deliveryName}"></span></td>
+	  	  </tr>
+	  	  <tr>
+	  	  	  <td>DeliveryStreet:</td>
+	  	  	  <td><span th:text="${order.deliveryStreet}"></span></td>
+	  	  </tr>	  
+	  	  <tr>
+	  	  	  <td>DeliveryCity:</td>
+	  	  	  <td><span th:text="${order.deliveryCity}"></span></td>
+	  	  </tr>
+	  	  <tr>
+	  	  	  <td>DeliveryState:</td>
+	  	  	  <td><span th:text="${order.deliveryState}"></span></td>
+	  	  </tr>
+	  	  <tr>
+	  	  	  <td>DeliveryZip</td>
+	  	  	  <td><span th:text="${order.deliveryZip}"></span></td>
+	  	  </tr>	 
+	  	  <tr>
+	  	  	  <td>CcNumber</td>
+	  	  	  <td><span th:text="${order.ccNumber}"></span></td>
+	  	  </tr>	
+	  	  <tr>
+	  	  	  <td>CcExpiration</td>
+	  	  	  <td><span th:text="${order.ccExpiration}"></span></td>
+	  	  </tr>	
+	  	  <tr>
+	  	  	  <td>CcCVV</td>
+	  	  	  <td><span th:text="${order.ccCVV}"></span></td>
+	  	  </tr>		  	  	  	  	  	  	  	   	  	  	  	  	  	  	  	 
+	  	  <div style="border:1px solid #CCC"></div> 	  	  
+	  </table>
+  	  <a href="/design">Place a taco order again!</a><br>	
+  </body>
+</html>

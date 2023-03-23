@@ -1,0 +1,38 @@
+spring:
+  # sql初始化
+  sql:
+    init:
+      mode: never
+      platform: mysql
+      username: root
+      password: root
+      schema-locations: classpath*:schema.sql
+      #data-locations: classpath*:data.sql
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/tacocloud
+    username: root
+    password: root    
+    
+  # 禁止JPA自动生成DDL建表
+  jpa:
+    hibernate:
+      ddl-auto: none    
+      
+  # 设置自动生成的rest api访问路径
+  data:
+    rest:
+      base-path: /api
+      
+  # 设置开启允许put请求
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
+      
+logging:
+  level:
+    '[org.hibernate]': DEBUG 
+    '[org.springframework.web]': DEBUG 
+    
+    
