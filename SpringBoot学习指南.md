@@ -253,6 +253,8 @@ https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-c
 
 
 
+
+
 # 二、Web 表单处理和校验
 
 ## 1、信息展现
@@ -1192,13 +1194,867 @@ https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-c
 
 
 
+# 三、使用操作数据
+
+​	Spring 的理念之一就是 "面向接口编程"，将接口定义和具体实现分隔开，应用系统使用的是接口，这样方便替换使用不同的实现。
+
+​	在数据访问中，访问数据需要先创建一个**数据访问对象（Data Access Object）**，为了面向接口编程，需要定义一个 **DAO 接口**，而 DAO 接口可以有多个不同的 **DAO 实现**， 业务系统中使用的是服务对象，服务对象通过接口来访问 DAO，这样既使得服务对象易于测试，又不再与特定的数据访问实现绑定在一起。
+
+<i#mg src="screenshot\15-DAO.png" style="zoom:60%;" />
+
+## 1、定义数据对象
+
+> **Ingredient 定义**
+
+```java
+package tacos.domain;
+
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+
+/**
+ *     配料领域类
+ */
+@Data							// 自动生成getter、setter
+@RequiredArgsConstructor        // 自动生成初始化final成员的构造函数
+public class Ingredient {
+	
+	private final String id;
+	private final String name;
+	private final Type type;
+	
+	public static enum Type {
+		WRAP, PROTEIN, VEGGIES, CHEESE, SAUCE
+	}
+	
+}
+```
+
+
+
+> **Taco 定义**
+
+```java
+package tacos.domain;
+
+import java.util.Date;
+import java.util.List;
+
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+import lombok.Data;
+
+@Data
+public class Taco {
+
+	private Long id;
+	private Date createdAt;
+	
+	@NotNull
+	@Size(min = 5, message = "Name must be at least 5 characters long")
+	private String name;	
+	
+	@NotNull(message = "You must choose at least 2 ingredient")
+	@Size(min = 2, message = "You must choose at least 2 ingredient")
+	private List<Ingredient> ingredients;	
+	
+}
+```
+
+​	因为 Taco 和 Ingredient 是一对多关系，原来的 Taco 定义只是简单的存储了 Ingredient 的 id 的字符串，这里直接存储关联的数据对象。
+
+
+
+> **Order 定义**
+
+```java
+package tacos.domain;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.validation.constraints.Digits;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Pattern;
+
+import org.hibernate.validator.constraints.CreditCardNumber;
+
+import lombok.Data;
+
+@Data
+public class Order {
+	 
+	private Long id;
+	
+	private Date placedAt;
+	
+	@NotBlank(message = "Name is required")
+	private String deliveryName;
+
+	@NotBlank(message = "Street is required")
+	private String deliveryStreet;
+
+	@NotBlank(message = "City is required")
+	private String deliveryCity;
+
+	@NotBlank(message = "State is required")
+	private String deliveryState;
+
+	@NotBlank(message = "Zip code is required")
+	private String deliveryZip;
+
+	@CreditCardNumber(message = "Not a valid credit card number")
+	private String ccNumber;
+
+	@Pattern(regexp = "^(0[1-9]|1[0-2])([\\/])([1-9][0-9])$", message = "Must be formatted MM/YY")
+	private String ccExpiration;
+
+	@Digits(integer = 3, fraction = 0, message = "Invalid CVV")
+	private String ccCVV;
+	
+	private List<Taco> tacos = new ArrayList<Taco>();
+	
+	public void addDesign(Taco design) {
+		this.tacos.add(design);
+	}	
+}
+```
+
+​	Order 和 Taco 的关系同样是一对多，所以 Order 类中有一个 Taco 列表，并提供了添加 Taco 的方法。
 
 
 
 
 
+## 2、定义数据接口
+
+​	每个领域对象的数据操作都会有对应一个数据接口，这里为 Ingredient、Taco、Order 分别创建一个接口。
+
+```java
+package tacos.data;
+import tacos.domain.Ingredient;
+
+public interface IngredientRepository {
+	Iterable<Ingredient> findAll();				// 查询所有配料信息
+	Ingredient findOne(String id);              // 根据id，查询单个Ingredient
+	Ingredient save(Ingredient ingredient);     // 保存Ingredient对象
+}
+
+package tacos.data;
+import tacos.domain.Taco;
+
+public interface TacoRepository {
+	Taco save(Taco design);
+}
+
+package tacos.data;
+
+import java.util.List;
+import tacos.domain.Order;
+
+public interface OrderRepository {
+	Order save(Order order);
+	List<Order> queryOrders();
+}
+```
 
 
+
+
+
+## 3、使用 JdbcTemplate
+
+​	直接使用 JDBC 也是可以操作数据库，但是不建议使用，因为每次操作都要书写加载驱动、创建连接、资源释放等一堆模板代码，JdbcTemplate 就是 Spring 针对 JDBC 使用不便提出的解决方案。
+
+​	首先引入依赖：
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-jdbc</artifactId>
+</dependency>	
+
+<!-- 如果要连接 MySQL 数据库则加上下面的驱动 -->
+<dependency>
+	<groupId>com.mysql</groupId>
+	<artifactId>mysql-connector-j</artifactId>
+	<scope>runtime</scope>
+</dependency>	
+```
+
+​	每个数据接口都会有对应的实现类：
+
+```java
+@Repository
+public class JdbcTacoRepository implements TacoRepository {
+	private JdbcTemplate jdbc; 
+	
+	@Autowired
+	public JdbcTacoRepository(JdbcTemplate jdbc) {
+		this.jdbc = jdbc;
+	}
+  
+    // ...
+}
+```
+
+​	实现类首先实现了接口，并且使用 **@Repository** 注解将其定义为一个数据仓库的 Bean，该类中内嵌了一个 JdbcTemplate 的对象，并通过自动注入 **@Autowired** 注解实现该属性的初始化，然后各个具体的数据操作方法中使用该对象进行具体的数据的增删查改等操作，接下来就要在上下文中创建一个 JdbcTemplate 的对象这样才能在启动初始化时注入。
+
+###（1）直接使用 Spring 配置
+
+​	如果不使用 Spring Boot，直接使用 Spring，首先要显式配置（不管是 XML 还是 Java 配置）一个数据源，然后定义一个 JdbcTemplate 并将数据源注入，如下所示：
+
+```xml
+<!-- sakila是安装MySQL时可选安装的演示数据库 -->
+<bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+	<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+	<property name="url" value="jdbc:mysql://localhost:3306/tacocloud?useSSL=false" />
+	<property name="username" value="root" />
+	<property name="password" value="root" />
+</bean>
+<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+	<constructor-arg ref="dataSource"/>
+</bean>
+```
+
+​	使用的时候在 DAO 接口实现中注入 JdbcTemplate 对象即可。
+
+
+
+### （2）使用 Spring Boot 配置
+
+​	在 application.properties 中配置以下属性即可：
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/tacocloud
+spring.datasource.username=root
+spring.datasource.password=root
+```
+
+​	这样 Spring Boot 检测到 DAO Impl 需要注入 JdbcTemplate 时就会自动生成并注入。
+
+
+
+### （3）使用 H2 嵌入式数据库
+
+​	在开发阶段，我们不想马上创建一个数据库实体，而是希望有一个便捷的开发环境，H2 数据库能满足这样的需求，H2 数据库是一个嵌入式的数据库，使用它只需要引入对应的依赖即可，开箱即用：
+
+```xml
+<dependency>
+	<groupId>com.h2database</groupId>
+	<artifactId>h2</artifactId>
+	<scope>runtime</scope>
+</dependency>
+```
+
+​	如果使用了 H2 数据库，application.properties 要调整为：
+
+```properties
+# mem表示数据库是基于内存的，应用启动即创建，停止自动回收
+spring.datasource.url=jdbc:h2:mem:taco
+spring.datasource.username=root
+spring.datasource.password=root
+```
+
+​	如果不配置上述属性也没关系，默认连接的数据库连接串格式为 `jdbc:h2:mem:8d73170a-0367-491e-ab69-189ab830c49f` ，后面是随机生成的 36 位数据库名，具体可以查看启动日志。
+
+<img src="screenshot\16-h2.png" style="zoom:100%;" />
+
+​	可以看到 H2 还提供了一个 Web Console，访问 `/h2-console` 即可。
+
+<img src="screenshot\17-h2-console.png" style="zoom:60%;" />
+
+​	默认用户名为 `sa`，密码为空。
+
+​	使用 H2 内存数据库，我们依然需要定义表来存储数据，因此依然需要有 DDL 和 DML。默认情况下，Spring Boot 检测到使用了 H2，会在启动时自动去加载位于 `src/main/resources` 目录下的 **schame.sql** 和 **data.sql**，下面我们分别定义数据模式和要插入的数据。
+
+​	新增 schema.sql，内容如下：
+
+```sql
+create table if not exists Ingredient (
+  id varchar(4) not null,
+  name varchar(25) not null,
+  type varchar(10) not null,
+  primary key(id)
+);
+
+create table if not exists Taco (
+  id identity,
+  name varchar(50) not null,
+  createdAt timestamp not null,
+  primary key(id)
+);
+
+create table if not exists Taco_Ingredients (
+  taco bigint not null,
+  ingredient varchar(4) not null
+);
+
+alter table Taco_Ingredients
+    add foreign key (taco) references Taco(id);
+alter table Taco_Ingredients
+    add foreign key (ingredient) references Ingredient(id);
+
+create table if not exists Taco_Order (
+	id identity,
+	deliveryName varchar(50) not null,
+	deliveryStreet varchar(50) not null,
+	deliveryCity varchar(50) not null,
+	deliveryState varchar(20) not null,
+	deliveryZip varchar(10) not null,
+	ccNumber varchar(16) not null,
+	ccExpiration varchar(5) not null,
+	ccCVV varchar(3) not null,
+    placedAt timestamp not null
+);
+
+create table if not exists Taco_Order_Tacos (
+	tacoOrder bigint not null,
+	taco bigint not null
+);
+
+alter table Taco_Order_Tacos
+    add foreign key (tacoOrder) references Taco_Order(id);
+alter table Taco_Order_Tacos
+    add foreign key (taco) references Taco(id);
+```
+
+​	我们针对 Ingredient、Taco 领域分别定义了一张表，因为一个 Taco 会跟多个 Ingredient 关联，所以又定义了一张关联表 `Taco_Ingredients` ，表中只有两个字段，分别外联到 Taco、Ingredient 表的主键 id 上。`Taco_Order` 是订单表，`Taco_Order_Tacos` 是关联表，同样只有两个字段分别外联到 Order、Taco 表的主键 id上。
+
+​	新增 data.sql，主要是插入配料数据：
+
+```sql
+delete from Taco_Order_Tacos;
+delete from Taco_Ingredients;
+delete from Taco;
+delete from Taco_Order;
+
+delete from Ingredient;
+insert into Ingredient (id, name, type) 
+                values ('FLTO', 'Flour Tortilla', 'WRAP');
+insert into Ingredient (id, name, type) 
+                values ('COTO', 'Corn Tortilla', 'WRAP');
+insert into Ingredient (id, name, type) 
+                values ('GRBF', 'Ground Beef', 'PROTEIN');
+insert into Ingredient (id, name, type) 
+                values ('CARN', 'Carnitas', 'PROTEIN');
+insert into Ingredient (id, name, type) 
+                values ('TMTO', 'Diced Tomatoes', 'VEGGIES');
+insert into Ingredient (id, name, type) 
+                values ('LETC', 'Lettuce', 'VEGGIES');
+insert into Ingredient (id, name, type) 
+                values ('CHED', 'Cheddar', 'CHEESE');
+insert into Ingredient (id, name, type) 
+                values ('JACK', 'Monterrey Jack', 'CHEESE');
+insert into Ingredient (id, name, type) 
+                values ('SLSA', 'Salsa', 'SAUCE');
+insert into Ingredient (id, name, type) 
+                values ('SRCR', 'Sour Cream', 'SAUCE');
+```
+
+​	这样启动之后，Spring Boot 就会将对应的 DDL、DML 在 H2 上初始化执行，打开 H2 Console，可以看到对应的表和数据。
+
+<img src="screenshot\18-h2-init.png" style="zoom:60%;" />
+
+​	**注意，如果使用的 ORM 框架是 JPA，因为 JPA 会根据使用了 @Entity 注解的类自动生成 DDL，会不执行 schema.sql 和 data.sql，因此需要在配置文件中禁用该特性。**
+
+```properties
+spring.jpa.hibernate.ddl-auto=none
+
+# 若使用了 JPA，因此会使用hibernate，所以开发测试阶段如果想查看DB操作的详情，将日志级别调整为debug
+logging.level.org.hibernate=DEBUG
+```
+
+​	如果想要显式设置数据库初始化的行为，则可参考下面的属性配置：
+
+```properties
+# 数据初始化的模式: never-不初始化  always-每次启动都初始化
+spring.sql.init.mode=always
+spring.sql.init.platform=h2
+spring.sql.init.username=sa
+spring.sql.init.password=
+spring.sql.init.schema-locations=classpath*:schema.sql
+spring.sql.init.data-locations=classpath*:data.sql.sql
+```
+
+
+
+### （4）实现数据接口
+
+> **Ingredient 接口的实现类**
+
+```java
+package tacos.data;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import tacos.domain.Ingredient;
+
+@Repository
+public class JdbcIngredientRepository implements IngredientRepository {
+
+	private JdbcTemplate jdbc; 
+	
+	@Autowired
+	public JdbcIngredientRepository(JdbcTemplate jdbc) {
+		this.jdbc = jdbc;
+	}
+	
+	@Override
+	public Iterable<Ingredient> findAll() {		
+		return jdbc.query("select id, name, type from Ingredient", this::mapRowToIngredient);
+	}
+
+	@Override
+	public Ingredient findOne(String id) {		
+		return jdbc.queryForObject("select id, name, type from Ingredient where id=?", this::mapRowToIngredient, id);
+	}
+
+	@Override
+	public Ingredient save(Ingredient ingredient) {
+		jdbc.update("insert into Ingredient (id, name, type) values (?, ?, ?)", 
+					ingredient.getId(), ingredient.getName(), ingredient.getType().toString());
+		return ingredient;
+	}
+
+	// 将查询出来的每一行通过本方法转化为对象
+	private Ingredient mapRowToIngredient(ResultSet rs, int rowNum) throws SQLException {
+		return new Ingredient(rs.getString("id"), 
+							  rs.getString("name"), 
+							  Ingredient.Type.valueOf(rs.getString("type")));
+	}
+}
+```
+
+​	通过 JdbcTemplate 的 **query()** 方法可以查询数据列表，**queryObject()** 方法适合通过唯一索引查询单个数据的 SQL，**update()** 方法可以执行插入、更新的 SQL，后面跟着要传入的参数列表。
+
+​	
+
+> **Taco 接口的实现**
+
+```java
+package tacos.data;
+
+import java.sql.Timestamp;
+import java.sql.Types;
+import java.util.Arrays;
+import java.util.Date;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
+import org.springframework.jdbc.core.PreparedStatementCreatorFactory;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+
+import tacos.domain.Ingredient;
+import tacos.domain.Taco;
+
+@Repository
+public class JdbcTacoRepository implements TacoRepository {
+
+	private JdbcTemplate jdbc; 
+	
+	@Autowired
+	public JdbcTacoRepository(JdbcTemplate jdbc) {
+		this.jdbc = jdbc;
+	}
+	
+	@Override
+	public Taco save(Taco taco) {
+		// 保存taco对象到Taco表，并返回插入数据行对应的id
+		long tacoId = saveTacoInfo(taco);
+		taco.setId(tacoId);
+		// 将ingredient和对应的taco对象的id插入到Taco_Ingredients表中
+		for (Ingredient ingredient : taco.getIngredients()) {
+			saveIngredientToTaco(ingredient, tacoId);
+		}
+		return taco;
+	}
+
+	private long saveTacoInfo(Taco taco) {
+		taco.setCreatedAt(new Date());
+		PreparedStatementCreatorFactory pcf = new PreparedStatementCreatorFactory(
+													"insert into Taco (name, createdAt) values (?, ?)", 
+													Types.VARCHAR, Types.TIMESTAMP
+												);
+		pcf.setReturnGeneratedKeys(true);
+		PreparedStatementCreator psc =
+				pcf.newPreparedStatementCreator(
+					Arrays.asList(
+						taco.getName(),
+						new Timestamp(taco.getCreatedAt().getTime()))
+				);
+		
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+		jdbc.update(psc, keyHolder);
+		
+		return keyHolder.getKey().longValue();
+	}
+	
+    private void saveIngredientToTaco(
+        Ingredient ingredient, long tacoId) {
+		    jdbc.update(
+		        "insert into Taco_Ingredients (taco, ingredient) " +
+		        "values (?, ?)",
+		        tacoId, ingredient.getId());
+    }	
+}
+```
+
+​	`save()` 方法做了保存 Taco 的所有要做的处理。
+
+​	首先调用 `saveTacoInfo()` 方法来将 Taco 对象保存到 Taco 表中，并且返回生成的记录的 id。为了拿到这个 id，首先需要创建一个 `PreparedStatementCreatorFactory` 对象，传入插表的 SQL，并指定数据类型，然后通过 `setReturnGeneratedKeys(true)` 设置插表自动生成的 id 要返回；接着通过 `PreparedStatementCreatorFactory`  对象创建一个 `PreparedStatementCreator` 对象，传入参数列表，对应第一步操作的变量占位，注意数据类型要跟前面设置的对应；最后创建一个 `KeyHolder` 对象，用来存放 SQL 执行返回的 id，并作为参数传递给 `update()` 方法，执行结束后，通过该对象返回数据 id。
+
+​	拿到 Taco 插入的数据 id 后，遍历 Taco 对象的配料列表，把 Taco id 和 Ingredient id 的对应关系插入到关联表中。
+
+
+
+> **Order 接口的实现**
+
+​	插入数据要获取 id 时，Taco 接口的实现比较繁琐，Spring JDBC 提供了更加简约的 **SimpleJdbcInsert**，因为在订单插表时，也要对 Taco 表进行操作，因此创建两个 SimpleJdbcInsert 对象分别处理对两个表的插入操作。
+
+ 	**SimpleJdbcInsert**  对象的创建，首先要传入 JdbcTemplate，然后通过 **withTableName()** 方法设置要操作的表名，**usingGeneratedKeyColumns()** 指定了是否要自动生成表的 id，也就是 schema.sql 中声明为 identify 的字段，Taco_Order_Tacos 表是关联表，所以不指定。
+
+​	**ObjectMapper** 对象是帮助 POJO 转化为 Map，从而符合 **executeAndReturnKey()** 方法传入的参数类型要求。
+
+```java
+package tacos.data;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
+import org.springframework.stereotype.Repository;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import tacos.domain.Order;
+import tacos.domain.Taco;
+
+@Repository
+public class JdbcOrderRepository implements OrderRepository {
+
+	private SimpleJdbcInsert orderInserter;
+	private SimpleJdbcInsert orderTacoInserter;
+	private ObjectMapper objectMapper;
+	private JdbcTemplate jdbc; 
+
+	@Autowired
+	public JdbcOrderRepository(JdbcTemplate jdbc) {
+		this.orderInserter = new SimpleJdbcInsert(jdbc)
+				                .withTableName("Taco_Order")
+				                .usingGeneratedKeyColumns("id");	// 使用系统生成的id并返回
+
+		this.orderTacoInserter = new SimpleJdbcInsert(jdbc)
+									.withTableName("Taco_Order_Tacos");
+
+		this.objectMapper = new ObjectMapper();
+		this.jdbc = jdbc;
+	}
+
+	@Override
+	public Order save(Order order) {
+		order.setPlacedAt(new Date());
+		long orderId = saveOrderDetails(order);
+		order.setId(orderId);
+		
+		List<Taco> tacos = order.getTacos();
+	    for (Taco taco : tacos) {
+	        saveTacoToOrder(taco, orderId);
+	    }
+
+	    return order;
+	}
+
+	private long saveOrderDetails(Order order) {
+		@SuppressWarnings("unchecked")
+		Map<String, Object> values = objectMapper.convertValue(order, Map.class);
+		// objectMapper会将placedAt的值转化为long，所以这里要覆盖设置以下map
+		values.put("placedAt", order.getPlacedAt());
+
+		long orderId = orderInserter.executeAndReturnKey(values).longValue();
+		return orderId;
+	}
+	
+	private void saveTacoToOrder(Taco taco, long orderId) {
+	    Map<String, Object> values = new HashMap<>();
+	    values.put("tacoOrder", orderId);
+	    values.put("taco", taco.getId());
+	    orderTacoInserter.execute(values);
+	}
+
+	@Override
+	public List<Order> queryOrders() {
+		return jdbc.query("select * from Taco_Order", new RowMapper<Order>() {
+			@Override
+			public Order mapRow(ResultSet rs, int rowNum) throws SQLException {
+				Order order = new Order();
+				order.setDeliveryName(rs.getString("deliveryName"));
+				order.setDeliveryStreet(rs.getString("deliveryStreet"));
+				order.setDeliveryCity(rs.getString("deliveryCity"));
+				order.setDeliveryState(rs.getString("deliveryState"));
+				order.setDeliveryZip(rs.getString("deliveryZip"));
+				order.setCcNumber(rs.getString("ccNumber"));
+				order.setCcExpiration(rs.getString("ccExpiration"));
+				order.setCcCVV(rs.getString("ccCVV"));
+				order.setId(rs.getLong("id"));
+				order.setPlacedAt(rs.getDate("placedAt"));
+				return order;
+			}
+		});		
+	}	
+		
+}
+```
+
+​	在 **saveOrderDetails()** 方法中，首先将 POJO 转化为 Map，然后调用 SimpleJdbcInserter 的 **executeAndReturnKey()** 方法执行 SQL，返回的对象为 Number 类型，通过 **longValue()** 方法转化为 long 类型并返回。这里要注意，**convertValue()** 方法有bug，会将placedAt的值转化为long，所以这里要覆盖设置一下map。拿到 Order id 后，遍历订单中的 Taco 将其 id 和 Order id 的关联关系写到 Taco_Order_Tacos 表中。
+
+​	在 **saveTacoToOrder()** 方法中，直接通过 **execute()** 方法将 map 中的字段与数据表中的字段一一对应插入数据。
+
+
+
+
+
+## 4、控制器使用 DAO
+
+​	完成了数据操作层的处理，控制器中要使用起来，这里需要重新编写控制器处理的代码。
+
+### （1）DesignTacosController
+
+```java
+package tacos.web;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.SessionAttributes;
+
+import lombok.extern.slf4j.Slf4j;
+import tacos.data.IngredientRepository;
+import tacos.data.TacoRepository;
+import tacos.domain.Ingredient;
+import tacos.domain.Ingredient.Type;
+import tacos.domain.Order;
+import tacos.domain.Taco;
+
+
+@Slf4j						// 相当于 private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DesignTacosController.class); 
+@Controller
+@RequestMapping("/design")
+@SessionAttributes("order")
+public class DesignTacosController {
+
+	private IngredientRepository ingredientRepo;
+	private TacoRepository tacoRepo;
+	
+	@Autowired
+	public DesignTacosController(IngredientRepository ingredientRepo, TacoRepository tacoRepo) {
+		this.ingredientRepo = ingredientRepo;
+		this.tacoRepo = tacoRepo;
+	}
+	
+	// 相当于每次访问都将菜单放到model中返回
+	@ModelAttribute
+	public void addIngredientsToModel(Model model) {
+		// 从数据库中查询到所有的配料数据
+		List<Ingredient> ingredients = new ArrayList<Ingredient>();
+		ingredientRepo.findAll().forEach(i -> ingredients.add(i));
+
+		Type[] types = Ingredient.Type.values();
+		for (Type type : types) {
+			model.addAttribute(type.toString().toLowerCase(), filterByType(ingredients, type));
+		}
+	}	
+	
+	@GetMapping
+	public String showDesignForm(Model model) {
+		//model.addAttribute("design", new Taco());
+		return "design";
+	}	
+	
+	@ModelAttribute(name = "order")
+	public Order order() {
+		return new Order();
+	}		
+	
+	@ModelAttribute(name = "design")
+	public Taco taco() {
+		return new Taco();
+	}
+	
+	// 这里的 @ModelAttribute("design") 对应的就是 showDesignFrom() 方法里的model
+	@PostMapping
+	public String processDesign(@Valid @ModelAttribute("design") Taco design, 
+								Errors errors,
+								@ModelAttribute Order order) {
+		if (errors.hasErrors()) {
+			return "design";
+		}
+		log.info("Processing design: " + design);
+		
+		Taco saved = tacoRepo.save(design);
+		order.addDesign(saved);
+		
+		return "redirect:/orders/current";
+	}
+	
+	// 根据指定配料种类筛选
+	private List<Ingredient> filterByType(List<Ingredient> ingredients, Type type) {
+		return ingredients.stream()
+				          .filter(x -> x.getType().equals(type))
+				          .collect(Collectors.toList());
+	}
+}
+```
+
+​	处理 Taco 设计的控制器，要展现配料信息，处理表单提交又要写入 Taco 数据，因此需要在类中注入 Ingredient、Taco 的数据操作对象。
+
+​	展现数据时，要通过 **IngredientRepository** 查到所有的配料数据，传入 Model，最后在网页上展现。
+
+​	处理表单提交时，因为一个订单可能包含多个 Taco，所以控制器的订单要保存每个 Taco 的数据状态，需要订单信息在多个请求中都能出现，因此 Model 的 order 属性的保持需要贯穿整个会话，所以通过 **@SessionAttributes("order")** 指定模型对象要保存在 session 中。
+
+​	Order 参数带有 **@ModelAttribute** 注解，表明它的值应该是来源于模型的，Spring MVC 不会尝试将请求参数绑定到它上面。
+
+
+
+### （2）OrderController
+
+```java
+package tacos.web;
+
+import java.util.List;
+
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.SessionAttributes;
+import org.springframework.web.bind.support.SessionStatus;
+
+import tacos.data.OrderRepository;
+import tacos.domain.Order;
+
+@Controller
+@RequestMapping("/orders")
+@SessionAttributes("order")
+public class OrderController {
+	
+	private OrderRepository orderRepo;
+	
+	@Autowired
+	public OrderController(OrderRepository orderRepo) {
+		this.orderRepo = orderRepo;
+	}
+	
+	@GetMapping("/current")
+	public String orderForm() {
+		return "orderForm";
+	}
+	
+	@PostMapping
+	public String processOrder(@Valid Order order, Errors errors, SessionStatus sessionStatus) {
+		if (errors.hasErrors()) {
+			return "orderForm";
+		}
+		
+		orderRepo.save(order);
+		sessionStatus.setComplete();
+		
+		return "redirect:/orders/list";
+	}
+	
+	@ModelAttribute(name = "orders")
+	private void addOrdersToModel(Model model) {
+		List<Order> orders = orderRepo.queryOrders();
+		model.addAttribute("orders", orders);
+	}
+	
+	@GetMapping("/list")
+	public String listOrders() {
+		return "orderList";
+	}
+}
+```
+
+​	模型对象中的 order 属性是保存在 session 中的，因此订单控制器同样在类上使用了 **@SessionAttributes("order")** ，这样控制器就能在提交订单时，感知到 Order 中的 Taco 列表，并传递给 **OrderRepository** 对象操作保存数据。
+
+​	当一个订单被提交保存处理时，order 会话的存在已无意义，所以这里通过 **sessionStatus.setComplete()** 来结束会话。
+
+
+
+### （3）测试
+
+​	在原来打印 Taco 日志的地方，会去执行保存 Taco 的操作，然后将提交的 Taco 添加到订单中。
+
+​	测试一下代码，提交 taco 表单时：
+
+<img src="screenshot\19-插入taco.png" style="zoom:60%;" />
+
+​	这时候还没提交订单，但是 taco 和 taco_ingredients 表都已有了数据
+
+<img src="screenshot\20-taco.png" style="zoom:60%;" />
+
+<img src="screenshot\21-tacoIngredients.png" style="zoom:60%;" />
+
+​	在订单表单提交页面上，点击再设计一个 Taco，然后再次提交 Taco，可以看到会话中的 order 依然保存了上次提交的 Taco 数据
+
+<img src="screenshot\22-order.png" style="zoom:60%;" />
+
+​	这次填写订单信息提交了，可以看到，会话中的 order 数据确实一直保持着
+
+<img src="screenshot\23-order.png" style="zoom:60%;" />
+
+​	订单提交完，重定向到 "/orders/list"，该页面会展现所有的订单数据，要渲染的订单数据通过 **addOrdersToModel()** 方法添加到数据模型中的 orders 属性。
+
+<img src="screenshot\24-orderlist.png" style="zoom:60%;" />
+
+
+
+
+
+## 5、使用 JPA
+
+
+
+
+
+【演示项目github地址】
+
+https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-data-persistence
 
 
 
