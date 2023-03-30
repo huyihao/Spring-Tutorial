@@ -2048,13 +2048,543 @@ public class OrderController {
 
 ## 5、使用 JPA
 
+### （1）Spring Data 简介
+
+​	Spring Data 是Spring 的一个子项目， 旨在统一和简化对各类型持久化存储， 而不拘泥于是关系型数据库还是NoSQL 数据存储。
+
+​	无论是哪种持久化存储， 数据访问对象（或称作为DAO，即Data Access Objects）通常都会提供对单一域对象的CRUD （创建、读取、更新、删除）操作、查询方法、排序和分页方法等。Spring Data则提供了基于这些层面的统一接口（CrudRepository，PagingAndSortingRepository）以及对持久化存储的实现。
+
+​	比较流行的几个 Spring Data 项目包括：
+
+* **Spring Data JPA** ：基于关系型数据库进行 JPA 持久化（鬼佬喜欢用，国内不流行）。
+* **Spring Data MongoDB** ：持久化到 Mongo 文档数据库。
+* **Spring Data Neo4j** ：持久化到 Neo4j 图数据库。
+* **Spring Data Redis** ：持久化到 Redis key-value 存储。
+* **Spring Data Cassandra** ：持久化到 Cassandra 数据库。
+
+
+
+### （2）添加依赖
+
+​	Spring Boot 通过 JPA Starter 来添加 Spring Data JPA。注意，JPA 是一个标准，还需要有具体的实现，默认 JPA 会引入 Hibernate 作为实现。
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+```
+
+​	如果想要使用其他实现，则示例如下：
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-data-jpa</artifactId>
+  	<!-- 去除默认的实现 -->
+    <exclusions>
+        <exclusion>
+            <artifactId>hibernate-entitymanager</artifactId>
+            <groupId>org.hibernate</groupId>
+        </exclusion>
+    </exclusions>  
+</dependency>
+<!-- 使用其他JPA实现 -->
+<dependency>
+	<groupId>org.eclipse.persistence</groupId>
+	<artifactId>eclipselink</artifactId>  
+  	<version></version>
+</dependency>
+```
+
+
+
+### （3）将领域对象标注为实体
+
+​	JPA 中的实体，是跟数据表挂钩的，也就是说一个实体类对象对应数据表里一条数据，要将领域对象标注为实体，需要使用 **@Entity** 注解。
+
+​	下面是几个实体类使用 JPA 后重写后的代码。
+
+> **Ingredient 实体**
+
+```java
+package tacos.jpa.domain;
+
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Id;
+
+import lombok.AccessLevel;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+
+/**
+ *     配料领域类
+ */
+@Data							// 自动生成getter、setter
+@RequiredArgsConstructor        // 自动生成初始化final成员的构造函数
+@NoArgsConstructor(access = AccessLevel.PRIVATE, force = true)
+@Entity
+public class Ingredient {
+	@Id
+	private final String id;
+	private final String name;
+	@Enumerated(EnumType.STRING)
+	private final Type type;
+	
+	public static enum Type {
+		WRAP, PROTEIN, VEGGIES, CHEESE, SAUCE
+	}
+	
+}
+```
+
+​	跟原来的类相比，没什么大的变化，只是单纯加了一个 @Entity 注解而已。
+
+
+
+> **Taco 实体**
+
+```java
+package tacos.jpa.domain;
+
+import java.util.Date;
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+import lombok.Data;
+
+// JPA中的驼峰标识自动映射到数据表中下划线标识
+@Data
+@Entity					// 声明为JPA实体
+@Table(name = "Taco")
+public class Taco {
+
+	@Id					// 指定为数据库中唯一标识
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+	private Date createdat;
+	
+	@NotNull
+	@Size(min = 5, message = "Name must be at least 5 characters long")
+	private String name;	
+	
+	/**
+	 * cascade级联操作策略:
+	 * 
+	 * 1. CascadeType.PERSIST 级联新建 
+     * 2. CascadeType.REMOVE 级联删除 
+     * 3. CascadeType.REFRESH 级联刷新 
+     * 4. CascadeType.MERGE 级联更新 
+     * 5. CascadeType.ALL 四项全选 
+     * 6. 默认，关系表不会产生任何影响
+	 */
+	@ManyToMany(targetEntity = Ingredient.class, cascade = CascadeType.ALL)
+    @JoinTable(name = "Taco_Ingredients",
+    		   joinColumns = @JoinColumn(name = "taco",  referencedColumnName = "id"),    
+    		   inverseJoinColumns = @JoinColumn(name = "ingredient", referencedColumnName = "id"))
+	@Size(min = 1, message = "You must choose at least 1 ingredient")
+	private List<Ingredient> ingredients;
+
+	@PrePersist
+	void createdAt() {
+		this.createdat = new Date();
+	}
+}
+```
+
+​	除了 @Entity 注解外，这里还用了 **@Table(name = "Taco")** 表示该实体对应的表是 Taco，如果不使用的话，默认按照类名来映射表，所以若类名跟表名有差异，务必加上这个注解。
+
+  	Taco 跟 Ingredient 是多对多的关系，所以这里用了 **@ManyToMany** ，**targetEntity** 表示目标映射的实体类型，**cascade** 表示级联操作策略，表示对 Taco 表进行增删改时，关联表里的数据要做的级联操作。
+
+* **@JoinTable** ：表述了 Taco 跟 Ingredient 的关联情况。
+
+* **name** ：属性表示关联的表为 Taco_Ingredients。
+
+* **joinColumns** ：表示连接表主表的外键，主表为 Taco，name 表示关联表的字段，referencedColumnName 表示关联的主表的列名。
+
+* **inverseJoinColumns** ：表示连接表副表的外键，副表为 Ingredient，name 表示关联表的字段，referencedColumnName  表示关联的副表的列名。
+
+* **@PrePersist** ：表示 Taco 持久化之前，使用这个方法将 createdat 设置为当前的日期和事件。
+
+  如果不配置默认的配置等同于：
+
+```java
+@JoinTable(name = "Taco_Ingredients",
+		   joinColumns = @JoinColumn(name = "taco_id",  referencedColumnName = "id"),    
+		   inverseJoinColumns = @JoinColumn(name = "ingredient_id", referencedColumnName = "id"))
+```
+
+
+
+> **Order 实体**
+
+```java
+package tacos.jpa.domain;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
+import javax.persistence.PrePersist;
+import javax.persistence.Table;
+import javax.validation.constraints.Digits;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Pattern;
+
+import org.hibernate.validator.constraints.CreditCardNumber;
+
+import lombok.Data;
+
+/**
+ * JPA会将驼峰标识的字段映射到数据表中下划线标识字段
+ */
+@Data
+@Entity
+@Table(name = "Taco_Order")
+public class Order implements Serializable {
+
+	private static final long serialVersionUID = 1L;
+
+	@Id					
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+	
+	private Date placedat;
+	
+	@NotBlank(message = "Name is required")
+	private String deliveryName;
+
+	@NotBlank(message = "Street is required")
+	private String deliveryStreet;
+
+	@NotBlank(message = "City is required")
+	private String deliveryCity;
+
+	@NotBlank(message = "State is required")
+	private String deliveryState;
+
+	@NotBlank(message = "Zip code is required")
+	private String deliveryZip;
+
+	@CreditCardNumber(message = "Not a valid credit card number")
+	private String ccNumber;
+
+	@Pattern(regexp = "^(0[1-9]|1[0-2])([\\/])([1-9][0-9])$", message = "Must be formatted MM/YY")
+	private String ccExpiration;
+
+	@Digits(integer = 3, fraction = 0, message = "Invalid CVV")
+	private String ccCVV;
+	
+	/**
+	 * 在下单之前Taco对象对应的数据已经持久化到数据库里了，所以这里的级联策略不能用CascadeType.ALL
+	 * 否则会同步去往Taco表里插记录，因为记录已存在id一致，所以会报错
+	 */
+	@ManyToMany(targetEntity = Taco.class, cascade = CascadeType.MERGE)
+    @JoinTable(name = "Taco_Order_Tacos",
+			   joinColumns = @JoinColumn(name = "tacoorder",  referencedColumnName = "id"),    
+			   inverseJoinColumns = @JoinColumn(name = "taco", referencedColumnName = "id"))	
+	private List<Taco> tacos = new ArrayList<Taco>();
+	
+	public void addDesign(Taco design) {
+		this.tacos.add(design);
+	}	
+	
+	@PrePersist
+	void placedat() {
+		this.placedat = new Date();
+	}
+}
+```
+
+​	这里要注意级联策略有了变化，改成了级联更新，即在往 Taco_Order 表插入数据时，如果 Order 实体对象的 Taco 列表中的 Taco 有了变化（之前已经插入到表里去了），则同步更新 Taco 表里的数据。
+
+
+
+### （4）声明 Repository
+
+​	Repository 就是一个 DAO 数据接口，只不过使用 JPA 时，它还要扩展 JPA 里的接口，一般情况下扩展 **CrudRepository** 接口即可。CrudRepository 定义了很多用于 CURD 操作的方法。它是参数化的，第一个参数是 repository 要持久化的实体类型，第二个参数是实体 ID 属性的类型。
+
+​	几个 Repository 定义如下：
+
+```java
+package tacos.jpa.data;
+
+import org.springframework.data.repository.CrudRepository;
+import tacos.jpa.domain.Ingredient;
+
+public interface IngredientRepository extends CrudRepository<Ingredient, String> {
+}
+
+
+package tacos.jpa.data;
+
+import org.springframework.data.repository.CrudRepository;
+import tacos.jpa.domain.Taco;
+
+public interface TacoRepository extends CrudRepository<Taco, Long> {
+}
+
+package tacos.jpa.data;
+
+import org.springframework.data.repository.CrudRepository;
+import tacos.jpa.domain.Order;
+
+public interface OrderRepository extends CrudRepository<Order, Long> {
+}
+```
+
+​	 JPA 的牛逼之处在于定义完接口之后就不用实现类了，因为 Spring Data JPA 会在运行期间自动生成实现类，并将其注册到上下文中，使用的时候将接口注入到控制器中即可。
+
+
+
+### （5）使用 Repository
+
+​	控制器的代码逻辑只是从之前的接口改成使用扩展 CrudRepository 的 JPA Repository 接口。
+
+> **DesignTacosController** 
+
+```java
+package tacos.jpa.web;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.SessionAttributes;
+
+import lombok.extern.slf4j.Slf4j;
+import tacos.jpa.data.IngredientRepository;
+import tacos.jpa.data.TacoRepository;
+import tacos.jpa.domain.Ingredient;
+import tacos.jpa.domain.Ingredient.Type;
+import tacos.jpa.domain.Order;
+import tacos.jpa.domain.Taco;
+
+
+@Slf4j						// 相当于 private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DesignTacosController.class); 
+@Controller("jpa-designTacosController")
+@RequestMapping("/jpa-design")
+@SessionAttributes("order")
+public class DesignTacosController {
+
+	private IngredientRepository ingredientRepo;
+	private TacoRepository tacoRepo;
+	
+	@Autowired
+	public DesignTacosController(IngredientRepository ingredientRepo, 
+								 TacoRepository tacoRepo) {
+		this.ingredientRepo = ingredientRepo;
+		this.tacoRepo = tacoRepo;
+	}
+	
+	// 相当于每次访问都将菜单放到model中返回
+	@ModelAttribute
+	public void addIngredientsToModel(Model model) {
+		// 从数据库中查询到所有的配料数据
+		List<Ingredient> ingredients = new ArrayList<Ingredient>();
+		ingredientRepo.findAll().forEach(i -> ingredients.add(i));
+
+		Type[] types = Ingredient.Type.values();
+		for (Type type : types) {
+			model.addAttribute(type.toString().toLowerCase(), filterByType(ingredients, type));
+		}
+	}	
+	
+	@GetMapping
+	public String showDesignForm(Model model) {		
+		return "jpa-design";
+	}	
+	
+	@ModelAttribute(name = "order")
+	public Order order() {
+		return new Order();
+	}		
+	
+	@ModelAttribute(name = "design")
+	public Taco taco() {
+		return new Taco();
+	}
+	
+	// 这里的 @ModelAttribute("design") 对应的就是 showDesignFrom() 方法里的model
+	@PostMapping
+	public String processDesign(@Valid @ModelAttribute("design") Taco design, 
+								Errors errors,
+								@ModelAttribute Order order) {
+		if (errors.hasErrors()) {
+			return "jpa-design";
+		}
+		log.info("Processing design: " + design);
+		
+		Taco saved = tacoRepo.save(design);
+		order.addDesign(saved);
+		
+		return "redirect:/jpa-orders/current";
+	}
+	
+	// 根据指定配料种类筛选
+	private List<Ingredient> filterByType(List<Ingredient> ingredients, Type type) {
+		return ingredients.stream()
+				          .filter(x -> x.getType().equals(type))
+				          .collect(Collectors.toList());
+	}
+}
+```
+
+
+
+> **OrderController** 
+
+```java
+package tacos.jpa.web;
+
+import javax.validation.Valid;
+
+import org.apache.commons.collections4.IteratorUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.SessionAttributes;
+import org.springframework.web.bind.support.SessionStatus;
+
+import tacos.jpa.data.OrderRepository;
+import tacos.jpa.domain.Order;
+
+
+@Controller("jpa-orderController")
+@RequestMapping("/jpa-orders")
+@SessionAttributes("order")
+public class OrderController {
+	
+	private OrderRepository orderRepo;
+	
+	@Autowired
+	public OrderController(OrderRepository orderRepo) {
+		this.orderRepo = orderRepo;
+	}
+	
+	@GetMapping("/current")
+	public String orderForm() {
+		return "jpa-orderForm";
+	}
+	
+	/**
+	 * @AuthenticationPrincipal User user   获取当前会话的用户
+	 */
+	@PostMapping
+	public String processOrder(@Valid Order order, 
+							   Errors errors, 
+							   SessionStatus sessionStatus) {
+		if (errors.hasErrors()) {
+			return "jpa-orderForm";
+		}
+		
+		orderRepo.save(order);
+		sessionStatus.setComplete();
+		
+		return "redirect:/jpa-orders/list";
+	}
+	
+	@ModelAttribute(name = "orders")
+	private void addOrdersToModel(Model model) {
+		Iterable<Order> orders = orderRepo.findAll();
+		model.addAttribute("orders", IteratorUtils.toList(orders.iterator()));
+	}
+	
+	@GetMapping("/list")
+	public String listOrders() {
+		return "jpa-orderList";
+	}
+	
+}
+```
+
+​	这里需要注意一个点，使用 H2 数据库，在 schame.sql 中即使字段是驼峰标志，在数据表里还是部分大小写，也不会自动转化为下划线，但是 JPA 实体定义为驼峰标识，执行 Repository 方法进行数据库操作时会被解析为下划线标识。
+
+​	比如：
+
+```sql
+create table if not exists Taco_Order (
+	id identity,
+	deliveryName varchar(50) not null,
+	deliveryStreet varchar(50) not null,
+	deliveryCity varchar(50) not null,
+	deliveryState varchar(20) not null,
+	deliveryZip varchar(10) not null,
+	ccNumber varchar(16) not null,
+	ccExpiration varchar(5) not null,
+	ccCVV varchar(3) not null,
+    placedAt timestamp not null
+);
+```
+
+​	在 H2 数据库中建库的效果是：
+
+<img src="screenshot\25-H2schema.png" style="zoom:60%;" />
+
+​	但是对应的 Order 实体，假如字段定义为 **deliveryName**，在执行数据操作前会被解析为 **delivery_name** 字段，从而导致报错找不到这个列。
+
+<img src="screenshot\26-h2error.png" style="zoom:100%;" />
+
+​	只要注意上述的点，就能够跑通流程了，在首页中添加超链接如下：
+
+```html
+<a href="/jpa-design">Start to design you taco!(use jpa)</a><br>	
+```
+
+​	其他的模板详见后面的github地址的仓库。
+
+
+
+### （6）自定义 Repository
+
+
+
+【JPA使用教程】https://wwwhxstrive.com/subject/open_jpa/569.htm
+
+【演示项目github地址】https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-data-persistence
 
 
 
 
-【演示项目github地址】
-
-https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-data-persistence
 
 
 
@@ -2118,5 +2648,29 @@ https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-c
 
 
 
+## 2、JPA使用查无数据问题
+
+​	默认引入H2嵌入数据库会在程序启动时执行资源目录（src/main/resources）下的schema.sql、data.sql，但是引入jpa依赖后，jpa会自动根据@Entity注解标注的POJO的定义生成DDL并建表，覆盖H2默认初始化的行为，为了不被覆盖，需要禁用JPA的自动建表，在配置文件中添加配置：
+
+```properties
+# 禁用JPA的自动生成DDL并建表
+spring.jpa.hibernate.ddl-auto=none
+```
 
 
+
+## 3、使用JPA框架ORM映射报错NumberFormatException
+
+​	枚举类型字段，需要使用注解@Enumerated(EnumType.STRING)声明
+
+
+
+## 4、Validation IO @Size 使用问题
+
+​	对于普通类型，数据未上送即会报错，但是对于一个容器类型，比如 List<Ingredient> ，如果请求表单未上送数据，则 **@Size(min = 1)** 是不起作用的，这时候为了完善，需要添加一个 **@NotNull** 的注解配合使用。
+
+
+
+## 5、表单提交嵌套的对象的问题
+
+​	需要定义转换器
