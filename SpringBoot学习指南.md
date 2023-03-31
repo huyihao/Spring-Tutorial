@@ -1264,6 +1264,34 @@ public class Taco {
 
 ​	因为 Taco 和 Ingredient 是一对多关系，原来的 Taco 定义只是简单的存储了 Ingredient 的 id 的字符串，这里直接存储关联的数据对象。
 
+​	Taco 表单勾选配料时上送上来的只是个字符串，而 Taco 对象的配料列表元素却是 Ingredient 对象，所以需要有个转换器来处理提交表单数据从字符串到 Ingredient 的转换，这里需要定义一个类实现 Spring 的 **Converter** 接口：
+
+```java
+package tacos.domain.converter;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.stereotype.Component;
+
+import tacos.data.IngredientRepository;
+import tacos.domain.Ingredient;
+
+@Component
+public class IngredientByIdConverter implements Converter<String, Ingredient> {
+
+	@Autowired
+	IngredientRepository repository;	
+	
+	@Override
+	public Ingredient convert(String source) {
+		return repository.findOne(source);
+	}
+
+}
+```
+
+​	使用 @Component 将其注册到上下文中，Converter 需要传入两个类型参数，第一个是转换前的类型，第二个是转换后的类型，然后实现类要实现 convert() 方法，方法的参数和返回值是由 Converter 的类型参数决定的。这里的转换是通过插表实现的。
+
 
 
 > **Order 定义**
@@ -2576,11 +2604,102 @@ create table if not exists Taco_Order (
 
 ### （6）自定义 Repository
 
+​	除了 CrudRepository 提供的基本 CRUD 操作之外，我们可能有时候需要自定义一些操作方法，依然还是不需要具体实现，但是需要遵循一定的规则。
 
+​	Spring Data 会检查 repository 接口的所有方法，解析方法的名称，并基于被持久化的对象来试图推测方法的目的。Spring Data 定义了一组小型的领域特定语言（**Domain-Specific Language，DSL**），持久化的细节都是通过 repository 方法的签名来描述的。
+
+​	比如：
+
+```java
+List<Order> findByDeliveryZip(String deliveryZip);
+```
+
+​	repository 方法由一个动词（find）、可选主题（order）、关键词（By）以及一个断言（DeliveryZip）组成。
+
+​	等同于 SQL：
+
+```sql
+select * from Taco_Order where deliveryzip = #{deliveryZip};
+```
+
+​	再看一个更复杂的例子：
+
+```java
+List<Order> readOrdersByDeliveryZipAndPlacedAtBetweenOrderByDeliveryName(String deliveryZip, Date startDate, Date endDate);
+```
+
+​	动词是 read、主题是 orders、关键词 by/and/between、断言 DeliveryZip/PlacedAt，等同于 SQL：
+
+```sql
+select * from Taco_Order where deliveryzip = #{deliveryZip} 
+and placedat between #{startDate} and #{endDate} order by deliveryname;
+```
+
+* **动词**：可以使用 **find、read、get**
+
+* **操作符**：
+
+  * IsAfter、After
+
+  * IsGreaterThan、GreaterThan、IsGreaterThanEqual、GreaterThanEqual
+
+  * IsBefore、Before
+
+  * IsLessThan、LessThan、IsLessThanEqual、LessThanEqual
+
+  * IsBetween、Between
+
+  * IsNull、Null
+
+  * IsNotNull、NotNull
+
+  * IsIn、In
+
+  * IsNotIn、NotIn
+
+  * IsStartingWith、StartingWith、StartsWith
+
+  * IsEndingWith、EndingWith、EndsWith
+
+  * IsContaining、Containing、Contains
+
+  * IsLike、Like
+
+  * IsNotLike、NotLike
+
+  * IsTrue、True
+
+  * IsFalse、False
+
+  * IsEquals
+
+  * IsNot、Not
+
+  * IgnoringCase、IgnoresCase、AllIgnoringCase、AllIgoresCase
+
+    ​
+
+
+  如果要执行一些非常复杂的查询，方法名的定义可能面临失控的风险。在这种情况下，可以将方法定义为任何想要的名称，通过添加 **@Query** 注解来实现，如：
+
+  ```java
+  @Query("Order o where o.deliveryCity = 'Seattle'")
+  List<Order> readOrderSDeliveredInSeattle();
+  ```
+
+  ​
 
 【JPA使用教程】https://wwwhxstrive.com/subject/open_jpa/569.htm
 
 【演示项目github地址】https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-data-persistence
+
+
+
+
+
+
+
+# 四、Spring Security
 
 
 
