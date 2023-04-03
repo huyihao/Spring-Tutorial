@@ -2701,7 +2701,710 @@ and placedat between #{startDate} and #{endDate} order by deliveryname;
 
 # 四、Spring Security
 
+​	Web 应用容易遭到各种攻击，所以采用一些安全措施来保护应用正常使用和信息不被窃取篡改非常必要。Spring Security 就是这么一个组件。
 
+## 1、启用
+
+​	要使用 Spring Security，添加对应的 starter 即可：
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-security</artifactId>
+</dependency>	
+<!-- 如果使用的是thymeleaf模板要引入下面的依赖 -->
+<dependency>
+	<groupId>org.thymeleaf.extras</groupId>
+	<artifactId>thymeleaf-extras-springsecurity5</artifactId>
+</dependency>	
+```
+
+​	启动应用，日志中会打印随机生成密码信息，默认用户名是 `user`
+
+```
+Using generated security password: 9d05346a-e240-46cc-9c53-87de94f5734d
+```
+
+​	访问应用，会首先跳到登录页 `http://localhost:8080/login`
+
+<img src="screenshot\27-login.png" style="zoom:70%;" />
+
+​	输入正确的用户名和密码，就有权限访问应用了。
+
+​	通过将 Security Starter 添加到项目的构建文件中，可以得到如下的安全特性：
+
+* 所有的 HTTP 请求路径都需要认证；
+* 不需要特定的角色和权限；
+* 没有登录页面；
+* 认证过程是通过 HTTP basic 认证对话框实现的；
+* 系统只有一个用户，用户名为 user。
+
+
+
+​	可以看到以上的安全特性，充其量只能称之为一个 demo，并不能真正地满足以下的功能需求：
+
+* 通过登录页面提示客户进行认证，而不是使用 HTTP basic 对话框；
+
+* 提供多个用户，并提供一个注册页面，这样新用户能够注册进来；
+
+* 对不同的请求路径，执行不同的安全规则。比如主页和注册页面根本不需要进行认证。
+
+  为了满足上述要求，需要做一些显式的配置，覆盖掉自动配置为我们提供的功能。
+
+
+
+
+
+## 2、配置
+
+​	需要定义一个 Spring Security 的基础配置类，该安全类要继承 `WebSecurityConfigurerAdapter` 类，并重写 `configure(AuthenticationManagerBuilder auth)` 方法。
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+  	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {	
+      	...
+    }
+  
+	/**
+	 * 保护web请求，定义授权规则
+	 */
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {		
+        /**
+         * 1、formLogin()：指定支持基于表单的身份验证
+         * 2、未使用 FormLoginConfigurer#loginPage(String) 指定登录页时，将自动生成一个登录页面，亲测此页面引用的是联网的 bootStrap 的样式，所以断网时，样式会有点怪
+         * 3、当用户没有登录、没有权限时默认会自动跳转到登录页面(默认 /login),当登录失败时，默认跳转到 /login?error,登录成功时会放行
+         * 4、.defaultSuccessUrl("/design", true)：强制要求用户在登录之后统一跳转到"/design"页面
+         */		
+		http.formLogin().loginPage("/login");      
+    }
+}
+
+/**
+ * 密码编码。Spring Security 高版本必须进行密码编码，否则报错
+ */
+class MyPasswordEncoder implements PasswordEncoder {
+    @Override
+    public String encode(CharSequence charSequence) {
+        return charSequence.toString();
+    }
+ 
+    @Override
+    public boolean matches(CharSequence charSequence, String s) {
+        return s.equals(charSequence.toString());
+    }
+}
+```
+
+​	在 configure() 方法中，配置用户存储，Spring Security 为配置用户存储提供了多个可选方案，包括：
+
+* 基于内存的用户存储
+* 基于 JDBC 的用户存储
+* 以 LDAP 作为后端的用户存储
+* 自定义用户详情服务
+
+  ​`configure(HttpSecurity http)` 方法 Web 请求保护授权规则，目前还没有配置任何规则，默认访问所有页面都需要保证先登录，`http.formLogin().loginPage("/login")` 表示使用了指定的自定义登录页面的 URL，如果只是简单访问页面，则在视图控制器中添加以下一行即可：
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+	@Override
+	public void addViewControllers(ViewControllerRegistry registry) {
+		// ...
+		// 不设置视图名，则默认跟路径名相同，即http://localhost:8080/login 访问的是login.html
+		registry.addViewController("/login");
+	}
+}
+```
+
+​	login.html 代码如下：
+
+```html
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" 
+      xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <title>Taco Cloud</title>
+  </head>
+  
+  <body>
+    <h1>Login</h1>
+    <img th:src="@{/images/TacoCloud.png}"/>
+    
+    <div th:if="${error}"> 
+      Unable to login. Check your username and password.
+    </div>
+    
+    <p>New here? Click 
+       <a th:href="@{/register}">here</a> to register.</p>
+    
+    <!-- tag::thAction[] -->
+    <form method="POST" th:action="@{/login}" id="loginForm">
+    <!-- end::thAction[] -->
+      <label for="username">Username: </label>
+      <input type="text" name="username"/><br/>
+      
+      <label for="password">Password: </label>
+      <input type="password" name="password"/><br/>
+      
+      <input type="submit" value="Login"/>
+    </form>
+  </body>
+</html>
+```
+
+### （1）基于内存的用户存储
+
+​	下面展现了配置两个用户：
+
+```java
+auth.inMemoryAuthentication()
+	.passwordEncoder(new MyPasswordEncoder())
+	.withUser("buzz").password("infinity").roles("USER")	
+     // 高版本使用roles(xxx)不使用authorities(xxx)
+	.and()
+	.withUser("woody").password("bullseye").roles("USER");
+```
+
+​	用户密码为：buzz/infinity、woody/bullseye，授权用户角色是 USER。
+
+
+
+### （2）自定义用户认证
+
+​	自定义用户认证，既可以自行定义表结构来注册用户和用户登录认证。
+
+> **数据表**
+
+```sql
+create table if not exists Taco_User (
+	id identity,
+	username varchar(50) not null,
+	password varchar(256) not null,
+	fullname varchar(50) not null,
+	street varchar(50) not null,
+	city varchar(50) not null,
+	state varchar(50) not null,
+	zip varchar(50) not null,
+	phone_number varchar(50) not null
+);
+```
+
+
+
+> **领域对象**
+
+```java
+package tacos.jpa.domain;
+
+import java.util.Arrays;
+import java.util.Collection;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import lombok.AccessLevel;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+
+@Data
+@Entity
+@NoArgsConstructor(access = AccessLevel.PRIVATE, force = true)
+@RequiredArgsConstructor
+@Table(name = "Taco_User")
+public class User implements UserDetails {
+
+	private static final long serialVersionUID = 1L;
+
+	private final String username;
+	private final String password;	
+	
+	private final String fullname;
+	private final String street;
+	private final String city;
+	private final String state;
+	private final String zip;
+	private final String phoneNumber;	
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;	
+	
+	// 返回用户被授予权限的一个集合
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		// 所有的用户都被授予USER权限
+		return Arrays.asList(new SimpleGrantedAuthority("ROLE_USER"));
+	}
+
+	// 用户的账户是否可用或者过期
+	@Override
+	public boolean isAccountNonExpired() {
+		return true;
+	}
+
+	// 用户的账户是否被未锁定
+	@Override
+	public boolean isAccountNonLocked() {
+		return true;
+	}
+
+	@Override
+	public boolean isCredentialsNonExpired() {		
+		return true;
+	}
+
+	@Override
+	public boolean isEnabled() {		
+		return true;
+	}
+}
+```
+
+​	类上用了例行的 JPA、lombok 注解，因为用户表名跟实体类名不一致，所以要用 **@Table** 来显式标注。
+
+​	通过实现 Spring Security 的 **UserDetails** 接口，能够提供更多信息给框架，比如用户都被授予了哪些权限以及用户的账号是否可用。
+
+​	 `getAuthorities()` 返回用户被授予权限的一个集合，这里表明所有的用户都被授予了 ROLE_USER 权限。各种 is...Expired() 方法要返回一个 boolean 值，表明用户的账号是否可用或过期。
+
+
+
+> **Repository 接口**
+
+```java
+package tacos.jpa.data;
+
+import org.springframework.data.repository.CrudRepository;
+
+import tacos.jpa.domain.User;
+
+public interface UserRepository extends CrudRepository<User, Long> {
+
+	User findByUsername(String username);
+	
+}
+```
+
+​	使用 JPA，因此继承了 `CrudRepository` 接口，除此之外还自定义了一个 `findByUsername()` 方法，Spring Data JPA 会在运行时自动生成这个接口的实现，相当于下面 SQL 的执行效果：
+
+```sql
+select * from Taco_User where username = #{username};
+```
+
+
+
+> **创建用户详情服务**
+
+​	Spring Security 的 **UserDetailsService** 接口在认证用户时要用到，因此需要定义一个实现类，并注入到 **SecurityConfig** 中。
+
+```java
+package tacos.security;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+import tacos.jpa.data.UserRepository;
+import tacos.jpa.domain.User;
+
+@Service
+public class UserRepositoryUserDetailsService implements UserDetailsService {
+
+	private UserRepository userRepo;
+	
+	@Autowired
+	public UserRepositoryUserDetailsService(UserRepository userRepo) {
+		this.userRepo = userRepo;
+	}
+	
+	@Override
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		User user = userRepo.findByUsername(username);
+		if (user != null) {
+			return user;
+		}
+		throw new UsernameNotFoundException("User '" + username + "' not found");
+	}
+
+}
+```
+
+​	`loadUserByUsername()` 会在用户登录认证时用到，实现中先是注入了上下文的 UserRepository 对象，然后通过它来查询用户是否存在，存在则返回，不存在则抛出一个 `UsernameNotFoundException` 异常。
+
+
+
+> **配置使用自定义的用户认证**
+
+​	万事俱备，现在在 `configure(AuthenticationManagerBuilder auth)` 方法里使用
+
+```java
+/**
+ * 自定义用户认证
+ * 使用Spring Security的UserDetails、UserDetailsService接口
+ */
+auth.userDetailsService(userDetailsService)
+	.passwordEncoder(encoder());				// 设置密码转码器
+```
+
+​	用户的密码明文储存在数据库里是不安全的，因此密码需要先经过加密转码后的处理才能保存到数据库中，这里需要在 SecurityConfig 中设置密码转码器。
+
+```java
+@Bean
+public PasswordEncoder encoder() {
+	return new StandardPasswordEncoder("53cr3t");
+}
+```
+
+​	passwordEncoder() 方法可以接受 Spring Security 中 PasswordEncoder 接口的任意实现。Spring Security 的加密模块包括了多个这样的实现。
+
+* **BCryptPasswordEncoder**：使用 bcrypt 强哈希加密。
+
+* **NoOpPasswordEncoder**：不进行任何转码。
+
+* **Pbkdf2PasswordEncoder**：使用 PBKDF2 加密。
+
+* **SCryptPasswordEncoder**：使用 scrypt 加密。
+
+* passwordEncoder：使用 SHA-256 哈希加密。
+
+  也可使用自定义的 PasswordEncoder 实现。
+
+  ​
+
+
+
+> **注册用户**
+
+​	现在已经有了自定义的用户详情服务，需要定义一个控制器来展现和处理用户注册，代码如下：
+
+```java
+package tacos.security;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import tacos.jpa.data.UserRepository;
+import tacos.jpa.domain.User;
+
+@Controller
+@RequestMapping("/register")
+public class RegistrationController {
+	private UserRepository userRepo;
+	private PasswordEncoder passwordEncoder;
+	
+	public RegistrationController(UserRepository userRepo, PasswordEncoder passwordEncoder) {		
+		this.userRepo = userRepo;
+		this.passwordEncoder = passwordEncoder;
+	}
+	
+	// 用户注册页
+	@GetMapping
+	public String registerForm() {
+		return "registration";
+	}	
+	
+	// 接收表单上送的数据，注册用户
+	@PostMapping
+	public String processRegistration(RegistrationForm form) {
+		User user = form.toUser(passwordEncoder);
+		userRepo.save(user);
+		return "redirect:/login";
+	}	
+}
+```
+
+​	用户访问 `"/register"` 即可访问用户注册页，对应的模板是 registration.html，代码如下：
+
+```html
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" 
+      xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <title>Taco Cloud</title>
+  </head>
+  
+  <body>
+    <h1>Register</h1>
+    <img th:src="@{/images/TacoCloud.png}"/>    
+    
+    <form method="POST" th:action="@{/register}" id="registerForm">
+    
+        <label for="username">Username: </label>
+        <input type="text" name="username"/><br/>
+
+        <label for="password">Password: </label>
+        <input type="password" name="password"/><br/>
+
+        <label for="confirm">Confirm password: </label>
+        <input type="password" name="confirm"/><br/>
+
+        <label for="fullname">Full name: </label>
+        <input type="text" name="fullname"/><br/>
+    
+        <label for="street">Street: </label>
+        <input type="text" name="street"/><br/>
+    
+        <label for="city">City: </label>
+        <input type="text" name="city"/><br/>
+    
+        <label for="state">State: </label>
+        <input type="text" name="state"/><br/>
+    
+        <label for="zip">Zip: </label>
+        <input type="text" name="zip"/><br/>
+    
+        <label for="phone">Phone: </label>
+        <input type="text" name="phone"/><br/>
+    
+        <input type="submit" value="Register"/>
+    </form>
+    
+  </body>
+</html>
+```
+
+​	表单提交时会由 `processRegistration()` 方法响应处理，定义一个 **RegistrationForm** 类来映射绑定提交的表单数据，代码如下：
+
+```java
+package tacos.security;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import lombok.Data;
+import tacos.jpa.domain.User;
+
+@Data
+public class RegistrationForm {
+
+	private String username;
+	private String password;
+	private String fullname;
+	private String street;
+	private String city;
+	private String state;
+	private String zip;
+	private String phone;
+	
+	public User toUser(PasswordEncoder passwordEncoder) {
+		return new User(username, passwordEncoder.encode(password), fullname, street, city, state, zip, phone);
+	}
+	
+}
+```
+
+​	转化为 User 对象时，会传入转码器对象，对密码进行转码处理，然后再持久化到数据库中。
+
+
+
+## 3、保护 Web 请求
+
+### （1）授权规则
+
+​	修改 SecurityConfig 的 `configure(HttpSecurity http)` 方法。
+
+```java
+	/**
+	 * 保护web请求，定义授权规则
+	 */
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {		
+		http.authorizeRequests()
+			.antMatchers("/design", "/orders").hasRole("USER")
+			.antMatchers("/", "/**").permitAll();
+	
+		http.formLogin().loginPage("/login");
+		
+        http.logout().logoutSuccessUrl("/");		
+		
+        http.csrf().ignoringAntMatchers("/h2-console/**", "/design/**", "/orders/**");        
+        http.headers().frameOptions().sameOrigin();
+	}
+```
+
+* Ⅰ、只有经过认证的角色为 USER 的用户才能访问 "/design"、"/orders"，而其他请求对所有客户均可用。
+
+* Ⅱ、使用指定的登录 URL，绑定自定义的登录页面。
+
+* Ⅲ、用户登出后跳转的 URL
+
+* Ⅳ、默认情况下 Spring 会开启 csrf 攻击防护，如果是 POST 请求，则必须验证 Token，如果没有，就会报错 403，无权限访问，即使上面对目标请求路径授权了也不行，这里配置对一些路径的访问忽略防护。
+
+* Ⅴ、h2-console 默认禁止页面展示 <iframe> 标签，设置同源策略即可。
+
+  ​
+
+
+
+### （2）防止跨站请求伪造
+
+​	跨站请求伪造**（Cross-Site Request Forgery，CSRF）**是一种常见的安全攻击。它会让用户在一个恶意的 Web 页面上填写信息，然后自动将表单以攻击受害者的身份提交到另一个应用上。
+
+​	例如，用户看到一个来自攻击者的 Web 站点的表单，这个站点会自动将数据 POST 到用户银行 Web 站点的 URL 上（这个站点可能缺乏安全防护），实现转账的操作。用户可能根本不知道发生了攻击，直到他们发现账号上的钱已经不翼而飞。
+
+​	为了防止这种类型的攻击，应用可以在展现表单的时候生成一个 CSRF Token，并放到隐藏域中，然后将其临时存储起来，以便后续在服务器上使用。在提交表单的时候，token 将和其他的表单数据一起发送至服务端。请求会被服务端拦截，并与最初生成的 token 进行对比。如果 token 匹配，那么请求将会允许处理；否则，表单肯定是恶意网站渲染的，因为它不知道服务器所生成的 token。
+
+​	Spring Security 提供了内置的 CSRF 保护，默认是启用的。要保证应用的每个表单都有一个名为 **"_csrf"** 字段，它会持有 token。
+
+​	在 Thymeleaf 模板中，可以在模板表单中嵌入以下隐藏域：
+
+```html
+<input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+```
+
+​	在 Thymeleaf 中，我们只需要确保 <form> 的某个属性带有 Thymeleaf 属性前缀即可。例如，为了让Thymeleaf 渲染隐藏域，只需要使用 th:action 属性即可。
+
+​	访问该页面时，可以看到被自动填充了一个 token。
+
+<img src="screenshot\28-csrf.png" style="zoom:70%;" />
+
+​	还可以禁用 Spring Security 对 CSRF 的支持，但是一般情况下该支持可以非常好地防护表单提交的安全，要禁用通过 `disable()` 来实现。
+
+```java
+http.csrf().disable();
+```
+
+
+
+
+
+## 4、获取当前用户
+
+​	有多种方式确定用户是谁，常用的方式如下：
+
+* 注入 **Principal** 对象到控制器方法中；
+
+* 注入 **Authentication** 对象到控制器方法中；
+
+* 使用 **SecurityContextHolder** 来获取安全上下文；
+
+  ```java
+  Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+  User user = (User) authentication.getPrincipal();
+  ```
+
+* 使用 **@AuthenticationPrincipal** 注解来标注方法。
+
+​	OrderController 的 `processOrder()` 方法参数添加一个 `@AuthenticationPrincipal User`
+
+ 参数。
+
+```java
+/**
+ * @AuthenticationPrincipal User user   获取当前会话的用户
+ */
+@PostMapping
+public String processOrder(@Valid Order order, 
+						 Errors errors, 
+						 SessionStatus sessionStatus,
+						 @AuthenticationPrincipal User user) {
+	if (errors.hasErrors()) {
+		return "jpa-orderForm";
+	}
+	
+	order.setUserInfo(user);
+	
+	orderRepo.save(order);
+	sessionStatus.setComplete();
+	
+	return "redirect:/jpa-orders/list";
+}
+```
+
+​	
+
+【演示项目github地址】https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-security
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+s
 
 
 
@@ -2792,4 +3495,4 @@ spring.jpa.hibernate.ddl-auto=none
 
 ## 5、表单提交嵌套的对象的问题
 
-​	需要定义转换器
+​	需要定义转换器 
