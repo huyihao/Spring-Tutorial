@@ -34,8 +34,8 @@ spring:
 
 # 日志      
 logging:
-#  path: ./logs
-#  file: TacoCloud.log
+  #path: ./logs
+  #file: TacoCloud.log
   level:
     root: INFO
     org.springframework.security: DEBUG
@@ -44,6 +44,8 @@ logging:
 taco:
   orders:
     page-size: 10
+    
+  test: haha
     
 
 

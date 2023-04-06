@@ -1,4 +1,4 @@
-# ya一、从一个SpringBoot小程序开始
+# 一、从一个SpringBoot小程序开始
 
 ## 1、工具环境安装
 
@@ -3398,7 +3398,7 @@ public DataSource dataSource() {
 * 命令行参数；
 * 应用属性配置文件。
 
-​	Spring 会将这些属性聚合到一个源中，通过这个源注入到 Spring Bean，如下图所示：
+  ​Spring 会将这些属性聚合到一个源中，通过这个源注入到 Spring Bean，如下图所示：
 
 <img src="screenshot\29-spring属性源.png" style="zoom:70%;" />
 
@@ -3505,7 +3505,7 @@ spring:
 * HikariCP
 * Commons DBCP 2
 
-​	如果自动配置不能满足需求，可以回到显式配置 DataSource Bean 的模式，这样可以使用任意喜欢的连接池实现。
+  ​如果自动配置不能满足需求，可以回到显式配置 DataSource Bean 的模式，这样可以使用任意喜欢的连接池实现。
 
 
 
@@ -3824,6 +3824,7 @@ public User user() {
 
 
 
+# 六、REST 服务
 
 
 
@@ -3890,7 +3891,8 @@ public User user() {
 
 
 
-s
+
+
 
 
 
@@ -3958,6 +3960,30 @@ public class OrderProps {
 ## @Profile
 
 ​	条件化注册 bean，根据 profile 的激活情况。
+
+
+
+## @RequestMapping
+
+
+
+
+
+## @ModelAttribute
+
+
+
+
+
+## @SessionAttributes
+
+
+
+
+
+## @CrossOrigin
+
+
 
 
 
@@ -4205,6 +4231,8 @@ java.sql.SQLSyntaxErrorException: Unknown column 'taco_id' in 'field list'
 
 
 
+
+
 ## 12、悬停application.yml不提示create metadata的问题
 
 ​	Help->Install New Software -> Add
@@ -4218,3 +4246,40 @@ PS. e.xx要看具体使用的eclipse版本
 ​	安装完之后重启IDE，Windows -> Perferences -> General -> Editors -> File Associations
 
 ​	选择*.yml文件默认打开的编辑器为 **Spring YAML Properties Editor**。
+
+
+
+
+
+## 13、插入数据报错Incorrect string value: '\xE5\xB9\xBF\xE5\xB7\x9E...' for column 'xxx' at row 1
+
+​	编码声明问题，默认是latin编码，插入中文会报错，将其修改为UTF-8即可。
+
+```sql
+create table taco_user (
+	id bigint not null auto_increment,
+	username varchar(50) not null,
+	password varchar(256) not null,
+	fullname varchar(50) not null,
+	street varchar(50) not null,
+	city varchar(50) not null,
+	state varchar(50) not null,
+	zip varchar(50) not null,
+	phone_number varchar(50) not null,
+	primary key(id)
+) engine=innodb default charset=utf8mb4 collate=utf8mb4_bin comment='Taco用户表';
+```
+
+
+
+
+
+## 14、ApplicationContextException: Unable to start ServletWebServerApplicationContext due to missing ServletWebServerFactory bean
+
+[【已解决】Spring容器中找不到ServletWebServerFactory类出现的异常-云社区-华为云 (huaweicloud.com)](https://bbs.huaweicloud.com/blogs/270062)
+
+```properties
+# 在配置中添加
+spring.main.web-application-type=none
+```
+
