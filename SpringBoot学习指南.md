@@ -1,4 +1,4 @@
-# 一、从一个SpringBoot小程序开始
+# ya一、从一个SpringBoot小程序开始
 
 ## 1、工具环境安装
 
@@ -3300,7 +3300,7 @@ http.csrf().disable();
 
 * 使用 **@AuthenticationPrincipal** 注解来标注方法。
 
-​	OrderController 的 `processOrder()` 方法参数添加一个 `@AuthenticationPrincipal User`
+  ​OrderController 的 `processOrder()` 方法参数添加一个 `@AuthenticationPrincipal User`
 
  参数。
 
@@ -3333,6 +3333,492 @@ public String processOrder(@Valid Order order,
 
 
 
+
+
+
+# 五、Spring Boot 自动配置
+
+​	使用 Spring 为 bean 注入属性时，通常都是在 XML 中设置属性，Java 类的中属性要为其添加 setter 方法，这样在启动的时候才可以去调用。
+
+​	比如定义一个 User 类，代码如下：
+
+```java
+package spring.domain;
+
+public class User {
+    private String name;
+  	private int age;
+  
+    public void setName(String name) {
+    	this.name = name;
+    }
+    
+    public void setAge(int age) {
+    	this.age = age;
+    }
+}
+```
+
+​	XML 配置如下：
+
+```xml
+<bean id="tom" class="spring.domain.User">
+    <property name="name" value="Tom"/>	
+    <property name="age" value="20"/>	
+</bean>
+```
+
+​	在没有显式配置的情况下，为 bean 设置属性并不这么容易。
+
+​	而 Spring Bean 提供了配置属性（Configuration Property）的方法。配置属性指为 Spring 上下文中的 Bean 配置属性，属性的数据源可以是 **JVM 系统参数、命令行参数和环境变量**。
+
+## 1、细粒度的自动配置
+
+​	自动配置的神奇之处在于，我们可以不显式配置 bean（包括 XML 和 Java 配置），比如现在要定义一个嵌入式的 H2 数据源，如果不使用 Spring Boot，则需要定义一个 bean：
+
+```java
+@Bean
+public DataSource dataSource() {
+  return new EmbeddedDataSourceBuilder()
+    	.setType(H2)
+    	.addScript("schema.sql")
+    	.addScript("data.sql")
+    	.build();
+}
+```
+
+​	而使用 Spring Boot 时，只要引入 H2 的依赖，应用启动运行时就会自动在 Spring 应用上下文中创建对应的 DataSource bean，并且这个 bean 会自动运行名为 schema.sql 和 data.sql 的脚本。
+
+### （1）Spring 环境属性源
+
+​	Spring 会拉取多个属性源，包括：
+
+* JVM 系统属性；
+* 操作系统环境变量；
+* 命令行参数；
+* 应用属性配置文件。
+
+​	Spring 会将这些属性聚合到一个源中，通过这个源注入到 Spring Bean，如下图所示：
+
+<img src="screenshot\29-spring属性源.png" style="zoom:70%;" />
+
+​	Spring Boot 自动配置的 bean 都可以通过 Spring 环境提取的属性进行配置。比如配置应用对外服务端口，可以在 application.properties 中配置：
+
+```properties
+server.port=8090
+```
+
+​	也可以在 application.yml 中配置：
+
+```yaml
+server:
+    port: 8090
+```
+
+​	如果喜欢在外部配置属性，可以使用命令行参数指定端口：
+
+```shell
+$ java -jar springbootapp.jar --server.port=8090
+```
+
+​	还可以通过环境变量设置：
+
+```shell
+$ export SERVER_PORT=8090
+```
+
+​	Spring 会将 `SERVER_PORT` 的环境变量解析为 `server.port` 。
+
+
+
+### （2）配置数据源
+
+​	Spring Boot 的自动配置很方便，但是一些属性的值如果跟默认不一致时，我们更希望能够在配置文件中自行配置。
+
+​	下面是 H2 数据库的数据源配置：
+
+```yaml
+# 默认的 H2 数据库名是随机生成的，这里指定为taco，默认用户名为sa，密码为空
+spring:
+  datasource:
+    url: jdbc:h2:mem:taco
+    username: sa
+    password:
+    
+  # 数据初始化
+  sql:
+    init:
+      mode: always
+      platform: h2
+      username: sa
+      password: 
+      schema-locations: classpath*:schema.sql
+      data-locations: classpath*:data.sql
+      
+  # h2-console
+  # 	path: 控制台路径
+  # 	enabled: 开启Web Console
+  #	    settings.web-allow-others: 允许远程访问Web Console
+  h2:
+    console:
+      path: /h2-console
+      enabled: true
+      settings:
+        web-allow-others: true
+```
+
+​	如果有配置跟默认的配置不一致，可以修改响应的属性
+
+​	如果要配置 MySQL 的数据源，配置如下：
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/tacocloud
+    username: root
+    password: root   
+    # MySQL 8.0 用的驱动不一样
+    driver-class-name: com.mysql.jdbc.Driver
+    
+  sql:
+    init:
+      mode: always
+      platform: mysql
+      username: root
+      password: root
+      schema-locations: classpath*:schema.sql
+      data-locations: classpath*:data.sql
+```
+
+​	使用 MySQL 要引入对应的驱动：
+
+```xml
+<dependency>
+	<groupId>com.mysql</groupId>
+	<artifactId>mysql-connector-j</artifactId>
+	<scope>runtime</scope>
+</dependency>
+```
+
+​	如果在类路径中存在 Tomcat 的 JDBC 连接池，DataSource 将使用该连接池。否则，Spring Boot 将会在类路径下尝试查找并使用如下的连接池实现：
+
+* HikariCP
+* Commons DBCP 2
+
+​	如果自动配置不能满足需求，可以回到显式配置 DataSource Bean 的模式，这样可以使用任意喜欢的连接池实现。
+
+
+
+### （3）配置日志
+
+​	默认情况下，Spring Boot 通过 Logback 配置日志，日志会以 INFO 级别写入控制台中。
+
+​	可以在 `src/main/resources` 目录下定义一个 logback.xml：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	
+	<!-- spring boot logback日志输出配置颜色转换器 -->
+	<conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
+	<conversionRule conversionWord="wex" converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter"/>
+	<conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter"/>
+	
+	<property name="PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS}  %clr(%-5p) %magenta(${PID:-}) --- [  %t] %cyan(%-40.40logger{39}) : %m%n"/>
+	
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${PATTERN}</pattern>
+        </encoder>
+	</appender>
+	
+	<root level="INFO">
+		<appender-ref ref="STDOUT"/>
+	</root>
+	
+	<logger name="root" level="INFO"/>
+	
+</configuration>
+```
+
+​	appender 表示要将日志打印到哪里，默认是 console，也可以指定写入到对应的日志文件。
+
+​	要设置日志级别，可以设置 **logging.level** 作为前缀的属性。随后设置想要设置日志级别的 logger。假设想要将 root logging 设置为 WARN，将 Sping Security 的日志级别设置为 DEBUG，则可在 appliaction.yml 中添加以下配置：
+
+```yaml
+logging:
+  level:
+    root: INFO
+    org.springframework.security: DEBUG
+```
+
+
+
+### （4）使用特定的属性值
+
+​	除了设置硬编码的属性值，还可以使用 ${} 占位符，表示值来自另外属性。
+
+```yaml
+greeting:
+  welcome: You are using ${spring.application.name}
+```
+
+​	
+
+
+
+## 2、创建和使用自定义配置属性
+
+### （1）定义配置属性的持有者
+
+​	定义一个对象，会读取属性配置来注入到成员属性中，
+
+```java
+package tacos;
+
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+import org.springframework.validation.annotation.Validated;
+
+import lombok.Data;
+
+@Component
+@Data
+@ConfigurationProperties(prefix = "taco.orders")
+@Validated
+public class OrderProps {
+
+	@Min(value = 5, message = "must be between 5 and 25")
+	@Max(value = 25, message = "must be between 5 and 25")
+	private int pageSize;
+	
+}
+```
+
+​	OrderProps 使用了 `@Component` 注解被定义为一个 bean，使用 `@ConfigurationProperties` 注解表示为 bean 中那些能够根据 Spring 环境注入值的属性赋值。
+
+​	比如这里的 `pageSize` 就会去找一个 page-size 的属性，因为注解还使用了 `taco.orders` 的前缀，所以要找的属性是 `taco.orders.pageSize` 。
+
+
+
+### （2）声明配置属性元数据
+
+​	在 application.yml 中，将鼠标悬停在配置的 Spring 自带某个属性上，会介绍该属性使用的一些信息。
+
+<img src="screenshot\31-metadata.png" style="zoom:70%;" />
+
+​	而如果是自定义的属性，会有警告的提示，鼠标悬停显示该属性未知，并且悬停框里还有可点击创建该属性元数据的按钮。
+
+<img src="screenshot\32-metadata.png" style="zoom:70%;" />
+
+​	点击 "Create metadata for xxx" 的按钮，就会自动在 `src/main/resources/META-INF` 目录下创建一个名为 `additional-spring-configuration-metadata.json` 的元数据描述 json 文件，打开该文件添加属性描述。
+
+<img src="screenshot\33-metadata.png" style="zoom:60%;" />
+
+​	再次打开 application.yml  可以看到不再有报警了，并且悬停显示 json 文件里添加的描述。
+
+<img src="screenshot\34-metadata.png" style="zoom:60%;" />
+
+PS. 如果悬停没有显示 **"Create metadata for xxx"** 的按钮，则需要安装插件，详情看附录B-问题汇总12。
+
+
+
+
+
+## 3、使用 profile 进行配置
+
+​	在不同的环境中，同个属性的值可能是不一样的，这种情况可以使用 Spring Profile，profile 是一种条件化配置，在运行时根据哪些 profile 处于激活状态，可以使用或忽略不同的 bean、配置类和配置属性。
+
+### （1）定义特定的 profile 属性
+
+> **方式1：定义不同的 profile 文件**
+
+​	文件的名称要遵循如下的约定：**application-{profile名}.yml** 或 **application-{profile名}.properties** ，比如现在配置两个 yml 文件，一个是 application-dev.yml 用于本地开发测试，一个是 application-prod.yml 用于生产环境。
+
+​	application-dev.yml，设置 H2 嵌入内存数据库，spring security 日志级别为 DEBUG。
+
+```yaml
+spring:
+  sql:
+    init:
+      mode: always
+      platform: h2
+      username: sa
+      password:
+      schema-locations: classpath*:schema-h2.sql
+      data-locations: classpath*:data-h2.sql
+
+  datasource:
+    url: jdbc:h2:mem:taco
+    username: sa
+    password:
+    
+logging:
+  level:    
+    org.springframework.security: DEBUG    
+```
+
+​	application-prod.yml，设置数据源为 mysql 数据库，spring security 日志级别为 WARN。
+
+```yaml
+spring:
+  sql:
+    init:
+      mode: always
+      platform: mysql
+      username: root
+      password: root
+      schema-locations: classpath*:schema.sql
+      #data-locations: classpath*:data.sql
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/tacocloud
+    username: root
+    password: root   
+    
+logging:
+  level:    
+    org.springframework.security: WARN    
+```
+
+
+
+> **方式2：在一个 yml 中定义多个 profile**
+
+```yaml
+logging:
+  level: 
+    tacos: DEBUG
+    
+---
+spring:
+  profiles: dev
+  
+  sql:
+    init:
+      mode: always
+      platform: h2
+      username: sa
+      password:
+      schema-locations: classpath*:schema-h2.sql
+      data-locations: classpath*:data-h2.sql
+
+  datasource:
+    url: jdbc:h2:mem:taco
+    username: sa
+    password:
+    
+logging:
+  level:    
+    org.springframework.security: DEBUG   
+    
+---
+spring:
+  profiles: prod
+
+  sql:
+    init:
+      mode: always
+      platform: mysql
+      username: root
+      password: root
+      schema-locations: classpath*:schema.sql
+      #data-locations: classpath*:data.sql
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/tacocloud
+    username: root
+    password: root   
+    
+logging:
+  level:    
+    org.springframework.security: WARN   
+```
+
+​	在第一个 `---` 上面的属性配置表示适用于所有的 profile，下面的属性表示属于不同的 profile，激活哪个 profile 就用哪些属性配置。如果 profile 的属性设置跟适用于所有 profile 的属性重复，则 profile 里的配置会覆盖优先。
+
+
+
+### （2）激活 profile
+
+> **方式1：在 yml 中指定（不建议）**
+
+```yaml
+spring:
+  profiles:
+  	active:
+  	- prod
+  	- taco
+```
+
+
+
+> **方式2：设置环境参数**
+
+```shell
+export SPRING_PROFILES_ACTIVE=prod
+```
+
+
+
+> **方式3：命令行参数**
+
+```shell
+# -Dspring.profiles.active=prod,taco
+java -jar springbootapp.jar --spring.profiles.active=prod,taco
+```
+
+
+
+### （3）条件化地创建 bean
+
+​	有一些场景，我们希望某些 bean 仅在特定 profile 激活的情况下才需要创建，@Profile 注解可以将某些 bean 设置为仅适用于给定的 profile。
+
+```java
+@Bean
+@Profile("prod")
+public User user() {
+  new User("Tom", 20);
+}
+```
+
+​	上面的配置表示当 prod profile 被激活时就注册一个 User 对象的 bean，也可以设置多个 profile 中任一被激活时注册 bean，如：
+
+```java
+@Bean
+@Profile({"prod", "qa"})
+public User user() {
+  new User("Tom", 20);
+}
+```
+
+​	也可以设置某个 profile 被激活时不注册bean，使用 `!`
+
+```java
+@Bean
+@Profile("!prod")
+public User user() {
+  new User("Tom", 20);
+}
+```
+
+​	同样设置多个 profile 中任一被激活都不注册
+
+```java
+@Bean
+@Profile({"!prod", "!qa"})
+public User user() {
+  new User("Tom", 20);
+}
+```
+
+
+
+【演示项目github地址】https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-config
 
 
 
@@ -3453,6 +3939,28 @@ s
 
 
 
+## @ConfigurationProperties
+
+​	表示为 bean 中那些能够根据 Spring 环境注入值的属性赋值。
+
+```java
+@Component
+@ConfigurationProperties(prefix = "taco.orders")
+public class OrderProps {
+	private int pageSize;
+}
+```
+
+​	注入属性为 taco.orders.page-size。
+
+
+
+## @Profile
+
+​	条件化注册 bean，根据 profile 的激活情况。
+
+
+
 
 
 
@@ -3470,6 +3978,8 @@ s
 
 
 
+
+
 ## 2、JPA使用查无数据问题
 
 ​	默认引入H2嵌入数据库会在程序启动时执行资源目录（src/main/resources）下的schema.sql、data.sql，但是引入jpa依赖后，jpa会自动根据@Entity注解标注的POJO的定义生成DDL并建表，覆盖H2默认初始化的行为，为了不被覆盖，需要禁用JPA的自动建表，在配置文件中添加配置：
@@ -3481,9 +3991,32 @@ spring.jpa.hibernate.ddl-auto=none
 
 
 
+
+
 ## 3、使用JPA框架ORM映射报错NumberFormatException
 
-​	枚举类型字段，需要使用注解@Enumerated(EnumType.STRING)声明
+​	枚举类型字段，需要使用注解 **@Enumerated(EnumType.STRING)** 声明
+
+```java
+@Data							// 自动生成getter、setter
+@RequiredArgsConstructor        // 自动生成初始化final成员的构造函数
+@NoArgsConstructor(access = AccessLevel.PRIVATE, force = true)
+@Entity
+public class Ingredient {
+	@Id
+	private final String id;
+	private final String name;
+	@Enumerated(EnumType.STRING)
+	private final Type type;
+	
+	public static enum Type {
+		WRAP, PROTEIN, VEGGIES, CHEESE, SAUCE
+	}
+	
+}
+```
+
+
 
 
 
@@ -3493,6 +4026,195 @@ spring.jpa.hibernate.ddl-auto=none
 
 
 
+
+
 ## 5、表单提交嵌套的对象的问题
 
-​	需要定义转换器 
+​	需要定义转换器 ，比如 Taco 对象里有 List<Ingredient> 的成员，表单提交的是字符串，对应 Ingredient 对象的 id，这就需要转换器来做转换，将字符串的 id 转换为 Ingredient 对象。
+
+```java
+@Component
+public class IngredientByIdConverter implements Converter<String, Ingredient> {
+
+	@Autowired
+	IngredientRepository repository;	
+	
+	@Override
+	public Ingredient convert(String source) {
+		return repository.findOne(source);
+	}
+
+}
+```
+
+
+
+
+
+## 6、Spring-JDBC 使用 KeyHolder 的问题
+
+​	新版本的Spring-Jdbc要求显式调用方法设置返回主键，否则 `keyHolder.getKey()` 会报空指针异常。
+
+```java
+private long saveTacoInfo(Taco taco) {
+	taco.setCreatedAt(new Date());
+	PreparedStatementCreatorFactory pcf = new PreparedStatementCreatorFactory(
+		"insert into Taco (name, createdAt) values (?, ?)", 
+	    Types.VARCHAR, Types.TIMESTAMP
+    );
+    // 必须加上这行
+	pcf.setReturnGeneratedKeys(true);
+	PreparedStatementCreator psc =
+			pcf.newPreparedStatementCreator(
+				Arrays.asList(
+					taco.getName(),
+					new Timestamp(taco.getCreatedAt().getTime()))
+			);
+	
+	KeyHolder keyHolder = new GeneratedKeyHolder();
+	jdbc.update(psc, keyHolder);
+	
+	return keyHolder.getKey().longValue();
+}
+```
+
+
+
+
+
+## 7、H2 schema语法问题
+
+​	外键关联，需要被关联的表中被关联的字段声明为primary key。
+
+
+
+
+
+## 8、Spring Security页面403问题
+
+​	赋予角色用 `roles(xxx)`，判断用户角色用 `hasRoles(xxx)` 。
+
+```java
+@Override
+protected void configure(AuthenticationManagerBuilder auth) throws Exception {	
+	/**
+	 * 在内存用户存储中配置两个用户，并且都授予ROLE_USER权限
+	 */
+	auth.inMemoryAuthentication()
+		.passwordEncoder(new MyPasswordEncoder())
+		.withUser("buzz").password("infinity").roles("USER")	// 高版本使用roles(xxx)不使用authorities(xxx)
+		.and()
+		.withUser("woody").password("bullseye").roles("USER");
+}
+```
+
+​	UserDetails 实现类返回用户授予权限集合时写法：
+
+```java
+// 返回用户被授予权限的一个集合
+@Override
+public Collection<? extends GrantedAuthority> getAuthorities() {
+	// 所有的用户都被授予USER权限，这里要用 ROLE_USER 而不是 USER
+	return Arrays.asList(new SimpleGrantedAuthority("ROLE_USER"));
+}
+```
+
+
+
+
+
+## 9、使用Spring Security的UserDetailService的各种问题
+
+（1）org.h2.jdbc.JdbcSQLSyntaxErrorException: Sequence "HIBERNATE_SEQUENCE" not found; SQL statement:
+
+call next value for hibernate_sequence [90036-214]
+
+​	修改id字段的生成类型注解：
+
+```java
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;
+```
+
+​	AUTO自动选择一个最适合底层数据库的主键生成策略。这个是默认选项，即如果只写@GeneratedValue，等价于@GeneratedValue(strategy=GenerationType.AUTO)。  该策略为主键序列化,而mysql是不支持的 ，oracle支持的。所以才会报错。
+
+
+
+（2）提示要执行的SQL预编译失败，有语法错误，日志中显示"insert into [*]user ..."
+
+​	这里的[*]是因为user跟数据库的关键字重合，因此需要显式注解表名 
+
+```java
+@Table(name = "Taco_User")
+```
+
+​	往用户表插入数据时，驼峰标识的字段phoneNumber，会被识别为phone_number字段，因此建表或者实体类的字段名要做相应的配合修改。
+
+
+
+（3）正确注册了用户和登录，但是登录后跳转页面提示403 forbiden
+
+​	因为登录用户权限不足，刷新浏览器因为会话没消失，所以一直提示403
+
+```java
+public class User implements UserDetails {
+
+	// other code
+	
+	// 返回用户被授予权限的一个集合
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		// 所有的用户都被授予USER权限
+		return Arrays.asList(new SimpleGrantedAuthority("ROLE_USER"));
+	}
+}
+```
+
+​	用户权限集默认需要添加 "ROLE_" 前缀，原来没前缀，所以权限不足，访问报403。
+
+
+
+
+
+## 10、JPA大坑
+
+​	org.hibernate.PersistentObjectException: detached entity passed to persist
+
+​	使用@ManyToMany、@OneToMany这类注解，需要配合@JoinTable、@JoinColumn这类注解使用
+
+[Spring Data JPA相关——多表联合查询中注解的使用_51CTO博客_spring data jpa 注解](https://blog.51cto.com/u_15067236/4193000)
+
+​	表关联会按照默认的规则插表和关联字段，如果不按照规则的关联表以及表中的字段会报错
+
+```
+insert into taco_ingredients (taco_id, ingredients_id) values (?, ?)
+
+java.sql.SQLSyntaxErrorException: Unknown column 'taco_id' in 'field list'
+
+```
+
+
+
+
+
+## 11、属性加载问题
+
+​	application.properties和application.yml不能共存，前者优先于后者，且可用@PropertySources注解加载
+
+[SpringBoot - 配置文件application.yml使用详解（附：Profile多环境配置） (hangge.com)](https://www.hangge.com/blog/cache/detail_2459.html)
+
+
+
+## 12、悬停application.yml不提示create metadata的问题
+
+​	Help->Install New Software -> Add
+
+​	安装插件：http://download.springsource.com/release/TOOLS/update/e4.17
+
+PS. e.xx要看具体使用的eclipse版本
+
+<img src="screenshot\30-springboot_metadata.png" style="zoom:70%;" />
+
+​	安装完之后重启IDE，Windows -> Perferences -> General -> Editors -> File Associations
+
+​	选择*.yml文件默认打开的编辑器为 **Spring YAML Properties Editor**。
