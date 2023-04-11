@@ -2385,7 +2385,7 @@ public interface OrderRepository extends CrudRepository<Order, Long> {
 }
 ```
 
-​	 JPA 的牛逼之处在于定义完接口之后就不用实现类了，因为 Spring Data JPA 会在运行期间自动生成实现类，并将其注册到上下文中，使用的时候将接口注入到控制器中即可。
+​	 JPA 的牛逼之处在于定义完接口之后就不用实现类了，**因为 Spring Data JPA 会在运行期间自动生成实现类，并将其注册到上下文中，使用的时候将接口注入到控制器中即可**。
 
 
 
@@ -3826,6 +3826,166 @@ public User user() {
 
 # 六、REST 服务
 
+## 1、创建 Restful 控制器
+
+### （1）检索数据
+
+​	定义一个控制器，用来获取最近创建的 Taco，并且只获取最新的 12 个。
+
+​	为了使得 TacoRepository 具备分页获取并排序的能力，需要创建一个继承 JPA `PagingAndSortingRepository` 的 TacoRepository，代码如下：
+
+```java
+package tacos.data;
+
+import org.springframework.data.repository.PagingAndSortingRepository;
+
+import tacos.Taco;
+
+/**
+ * 继承了PagingAndSortingRepository就具备了分页获取并排序的能力
+ */
+public interface TacoRepository extends PagingAndSortingRepository<Taco, Long> {
+
+}
+```
+
+​	PagingAndSortingRepository 实际上依然是 CrudRepository，所以 TacoRepository 依然是一个 CrudRepository。
+
+​	控制器取名为 `TacoApiController`，代码如下：
+
+```java
+package tacos.web.api;
+
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import lombok.extern.slf4j.Slf4j;
+import tacos.data.TacoRepository;
+import tacos.Taco;
+
+@Slf4j
+@RestController							
+@RequestMapping(path = "/design", 		
+			   produces = "application/json")   
+@CrossOrigin(origins = "*")	
+public class TacoApiController {
+	
+	private TacoRepository tacoRepo;
+	
+	@Autowired
+	public TacoApiController(TacoRepository tacoRepo) {		
+		this.tacoRepo = tacoRepo;
+	}
+	
+	// 获取最近设计的所有taco
+	@GetMapping("/recent")
+	public Iterable<Taco> recentTacos() {
+		PageRequest page = PageRequest.of(0, 12, Sort.by("createdAt").descending());
+		return tacoRepo.findAll(page).getContent();
+	}
+}
+```
+
+* **@RestController**：和使用 `@Controller` 的区别是，该注解会告诉 Spring，控制器中所有处理器方法的返回值都要直接写入响应体中，而不是将值放到模型中并传递给一个视图以便于进行渲染。
+
+  如果使用的是 `@Controller`，则必须为每个处理器方法再添加 `@ResponseBody`注解才能达到一样的效果。
+
+* **@RequestMapping**：`path` 属性表示要响应哪个路径的请求，`produces` 属性表示控制器中的所有处理器方法返回的报文信息头是 `"application/json"`，如果要限制只处理 Accept 头信息包含 `"application/json"` 的请求，添加 `consumes = "application/json"` 即可。
+
+* **@CrossOrigin**：配置 `origins = "*"` 表示允许来自任何域的客户端消费该 API。
+
+* **PageRequest**：`recentTacos()` 方法中先构造了一个 PageRequest 对象，指明想要第一页的 12 条结果，并且要按照 Taco 创建时间降序排列，然后该对象被传递给 Repository 的 `findAll()` 方法，获得的分页结果内容会返回到客户端。
+
+
+
+测试效果如下：
+
+<img src="screenshot\35-restapiget.png" style="zoom:50%;" />
+
+查看响应报文的 Headers，可以看到 Content-Type 是 `application/json`
+
+<img src="screenshot\36-restapiget.png" style="zoom:50%;" />
+
+​	下面为控制器编写新的方法，我们希望通过请求 `"/design/{id}"` 的 GET 请求获取某条数据，新增控制器响应处理方法如下：
+
+```java
+@GetMapping("/{id}")
+public Taco tacoById(@PathVariable("id") Long id) {
+	Optional<Taco> optTaco = tacoRepo.findById(id);
+	if (optTaco.isPresent()) {
+		return optTaco.get();
+	}
+	return null;
+}
+```
+
+​	路径的 `"{id}"` 部分是占位符，请求中的实际值将会传递给 id 参数，它通过 `@PathVariable` 注解和 {id} 占位符进行匹配。Repository 的 `findById()` 方法返回一个 Optional 类型的对象，如果查到了数据 `isPresent()` 方法会返回 true，并且可以通过 `get()` 方法获得查询到的 Taco 对象，否则返回 null。
+
+<img src="screenshot\37-restapiget.png" style="zoom:50%;" />
+
+​	但是这里有个问题，如果查询的数据不存在，会返回 null，客户端将收到空的响应体和 200（OK）的 HTTP 状态码。客户端实际上收到一个无法使用的响应，但是状态码却提示一切正常。
+
+<img src="screenshot\38-restapiget.png" style="zoom:50%;" />
+
+​	有一种更好的方式是在响应中使用 HTTP 404（NOT FOUND）状态，代码如下：
+
+```java
+@GetMapping("/{id}")
+public ResponseEntity<Taco> tacoById2(@PathVariable("id") Long id) {
+	Optional<Taco> optTaco = tacoRepo.findById(id);
+	if (optTaco.isPresent()) {
+		log.info("Query taco succ: " + optTaco.get());
+		return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
+	}
+	return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+}	
+```
+
+​	这里返回的是一个 `ResponseEntity` 的对象，查到数据会将其放入 Entity 对象中，并且会带有 **OK** 的 HTTP 状态；如果查不到数据，则包装一个 null 并带有 **NOT FOUND** 的 HTTP 状态。
+
+​	同样测试请求获取不存在的数据，返回响应状态码变了。
+
+<img src="screenshot\39-restapiget.png" style="zoom:50%;" />
+
+
+
+### （2）另一种请求 URL
+
+​	有可能请求的 URL 被设计为 `/design/taco?id=1` 这种形式，有几种方式来获取参数：
+
+> **方式1：方法参数名跟提交参数一致**
+
+```java
+@GetMapping("/taco")
+public ResponseEntity<Taco> tacoById3(Long id) {
+	Optional<Taco> optTaco = tacoRepo.findById(id);
+	if (optTaco.isPresent()) {
+		log.info("Query taco succ: " + optTaco.get());
+		return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
+	}
+	return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+}
+```
+
+<img src="screenshot\40-restapiget.png" style="zoom:50%;" />
+
+
+
+
+
 
 
 
@@ -3953,13 +4113,23 @@ public class OrderProps {
 }
 ```
 
-​	注入属性为 taco.orders.page-size。
+​	注入属性为 taco.orders.page-size，属性获取的来源可以是应用属性文件（application.properties、application.yml）、JVM参数、命令行参数、系统参数。
 
 
 
 ## @Profile
 
 ​	条件化注册 bean，根据 profile 的激活情况。
+
+```java
+@Bean
+@Profile("prod")
+public User user() {
+  new User("Tom", 20);
+}
+```
+
+​	上面的配置表示当 prod profile 被激活时就注册一个 User 对象的 bean，
 
 
 
@@ -3982,6 +4152,12 @@ public class OrderProps {
 
 
 ## @CrossOrigin
+
+
+
+
+
+## @PathVariable
 
 
 
