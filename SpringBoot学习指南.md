@@ -2677,7 +2677,7 @@ and placedat between #{startDate} and #{endDate} order by deliveryname;
 
   * IgnoringCase、IgnoresCase、AllIgnoringCase、AllIgoresCase
 
-    ​
+    
 
 
   如果要执行一些非常复杂的查询，方法名的定义可能面临失控的风险。在这种情况下，可以将方法定义为任何想要的名称，通过添加 **@Query** 注解来实现，如：
@@ -2806,7 +2806,7 @@ class MyPasswordEncoder implements PasswordEncoder {
 * 以 LDAP 作为后端的用户存储
 * 自定义用户详情服务
 
-  ​`configure(HttpSecurity http)` 方法 Web 请求保护授权规则，目前还没有配置任何规则，默认访问所有页面都需要保证先登录，`http.formLogin().loginPage("/login")` 表示使用了指定的自定义登录页面的 URL，如果只是简单访问页面，则在视图控制器中添加以下一行即可：
+  `configure(HttpSecurity http)` 方法 Web 请求保护授权规则，目前还没有配置任何规则，默认访问所有页面都需要保证先登录，`http.formLogin().loginPage("/login")` 表示使用了指定的自定义登录页面的 URL，如果只是简单访问页面，则在视图控制器中添加以下一行即可：
 
 ```java
 @Configuration
@@ -3082,7 +3082,7 @@ public PasswordEncoder encoder() {
 
   也可使用自定义的 PasswordEncoder 实现。
 
-  ​
+  
 
 
 
@@ -3247,7 +3247,7 @@ public class RegistrationForm {
 
 * Ⅴ、h2-console 默认禁止页面展示 <iframe> 标签，设置同源策略即可。
 
-  ​
+  
 
 
 
@@ -3300,7 +3300,7 @@ http.csrf().disable();
 
 * 使用 **@AuthenticationPrincipal** 注解来标注方法。
 
-  ​OrderController 的 `processOrder()` 方法参数添加一个 `@AuthenticationPrincipal User`
+  OrderController 的 `processOrder()` 方法参数添加一个 `@AuthenticationPrincipal User`
 
  参数。
 
@@ -3398,7 +3398,7 @@ public DataSource dataSource() {
 * 命令行参数；
 * 应用属性配置文件。
 
-  ​Spring 会将这些属性聚合到一个源中，通过这个源注入到 Spring Bean，如下图所示：
+  Spring 会将这些属性聚合到一个源中，通过这个源注入到 Spring Bean，如下图所示：
 
 <img src="screenshot\29-spring属性源.png" style="zoom:70%;" />
 
@@ -3505,7 +3505,7 @@ spring:
 * HikariCP
 * Commons DBCP 2
 
-  ​如果自动配置不能满足需求，可以回到显式配置 DataSource Bean 的模式，这样可以使用任意喜欢的连接池实现。
+  如果自动配置不能满足需求，可以回到显式配置 DataSource Bean 的模式，这样可以使用任意喜欢的连接池实现。
 
 
 
@@ -3826,7 +3826,109 @@ public User user() {
 
 # 六、REST 服务
 
-## 1、创建 Restful 控制器
+## 1、关于什么是 Rest API
+
+​	首先介绍API的概念，Application Programming Interface（应用程序接口）是它的全称。简单的理解就是，API是一个接口。那么它是一个怎样的接口呢，现在我们常将它看成一个 HTTP 接口即 HTTP API。
+
+​	因为 HTTP 是一个比较通用的协议，所以不管是前后端交互，公司内部不同群组应用之间的交互，还是不同公司组织结构间的系统联动通信，通常都是通过调用 HTTP 接口来实现。比如简书这个web应用要允许用户查看（query）、创建（create）、编辑更新（update）、删除（delete）文章，就可以通过创建对应的 HTTP API 来实现：
+
+> http://www.jianshu.com/query_article?id=xxx
+>
+> http:///www.jianshu.com/create_article...
+>
+> http:///www.jianshu.com/update_article?...
+>
+> http:///www.jianshu.com/delete_article?...
+
+​	这4个API分别实现了对简书文章的增删查改，可以调用相应的接口来实现相关的功能。但是有个不方便的地方，这种 API 写法有个缺点，就是没有一个统一的风格，比如查询文章也可以写成：
+
+> http://www.jianshu.com/view_article/xxx
+
+​	这样会造成接口调用方必须详细了解 API 才知道接口如何运作调用。
+
+​	而 REST 可以将我们从上述的困惑中解救出来。
+
+
+
+**什么是REST？**
+
+有了上面的介绍，你可能也大概有了直观的了解，说白了，**REST是一种风格！**
+
+REST的作用是将我们上面提到的查看（query）、创建（create）、编辑更新（update）、删除（delete）直接映射到HTTP 中已实现的**GET,POST,PUT和DELETE**方法。
+
+这四种方法是比较常用的，HTTP总共包含**八种**方法：
+
+> GET
+> POST
+> PUT
+> DELETE
+> OPTIONS
+> HEAD
+> TRACE
+> CONNECT
+
+当我们在浏览器点点点的时候我们通常只用到了GET方法，当我们提交表单，例如注册用户的时候我们就用到了POST方法...
+
+介绍到这里，我们重新将上面的四个接口改写成REST风格：
+
+**查看文章：**
+
+> GET http://www.jianshu.com/article/xxx
+
+**新增文章：**
+
+> POST http://www.jianshu.com/article
+>
+> Data: content=xxx,author=yyy
+
+**修改文章：**
+
+> PUT http://www.jianshu.com/article
+>
+> Data: id=xxx,content=zzz
+
+**删除文章：**
+
+> DELETE http://www.jianshu.com/article
+>
+> Data: id=xxx
+
+​	改动之后API变得统一了，我们只需要改变请求方式就可以完成相关的操作，这样大大简化了我们接口的理解难度，变得易于调用。
+
+**这就是REST风格的意义！**
+
+**HTTP状态码**
+
+REST的另一重要部分就是为既定好请求的类型来响应正确的状态码。如果你对HTTP状态码陌生，以下是一个简易总结。当你请求HTTP时，服务器会响应一个状态码来判断你的请求是否成功，然后客户端应如何继续。以下是四种不同层次的状态码：
+
+- 2xx = Success（成功）
+- 3xx = Redirect（重定向）
+- 4xx = User error（客户端错误）
+- 5xx = Server error（服务器端错误）
+
+我们常见的是200（请求成功）、404（未找到）、401（未授权）、500（服务器错误）...
+
+比如查询数据，查不到数据应该返回一个 404 的状态码而不是 200，更加贴近语义。
+
+**API格式响应**
+
+上面介绍了REST API的写法，响应状态码，剩下就是请求的数据格式以及响应的数据格式。说的通俗点就是，我们用什么格式的参数去请求接口并且我们能得到什么格式的响应结果。
+
+我这里只介绍一种用的最多的格式——JSON格式
+
+目前json已经发展成了一种最常用的数据格式，由于其轻量、易读的优点。
+
+所以我们经常会看到一个请求的header信息中有这样的参数：
+
+> Accept:application/json
+
+这个参数的意思就是接收来自后端的json格式的信息。
+
+
+
+
+
+## 2、创建 Restful 控制器
 
 ### （1）检索数据
 
