@@ -2677,7 +2677,6 @@ and placedat between #{startDate} and #{endDate} order by deliveryname;
 
   * IgnoringCase、IgnoresCase、AllIgnoringCase、AllIgoresCase
 
-    
 
 
   如果要执行一些非常复杂的查询，方法名的定义可能面临失控的风险。在这种情况下，可以将方法定义为任何想要的名称，通过添加 **@Query** 注解来实现，如：
@@ -3082,7 +3081,6 @@ public PasswordEncoder encoder() {
 
   也可使用自定义的 PasswordEncoder 实现。
 
-  
 
 
 
@@ -3247,7 +3245,6 @@ public class RegistrationForm {
 
 * Ⅴ、h2-console 默认禁止页面展示 <iframe> 标签，设置同源策略即可。
 
-  
 
 
 
@@ -3928,6 +3925,26 @@ REST的另一重要部分就是为既定好请求的类型来响应正确的状�
 
 
 
+## 2、Spring 解析请求参数
+
+​	对不同的请求传递的参数，需要使用不同的解析方法
+
+### （1）请求路径参数
+
+
+
+### （2）GET 请求参数
+
+
+
+### （3）POST 请求参数
+
+
+
+
+
+
+
 ## 2、创建 Restful 控制器
 
 ### （1）检索数据
@@ -4017,7 +4034,7 @@ public class TacoApiController {
 
 <img src="screenshot\35-restapiget.png" style="zoom:50%;" />
 
-查看响应报文的 Headers，可以看到 Content-Type 是 `application/json`
+​	查看响应报文的 Headers，可以看到 Content-Type 是 `application/json`
 
 <img src="screenshot\36-restapiget.png" style="zoom:50%;" />
 
@@ -4040,9 +4057,7 @@ public Taco tacoById(@PathVariable("id") Long id) {
 
 ​	但是这里有个问题，如果查询的数据不存在，会返回 null，客户端将收到空的响应体和 200（OK）的 HTTP 状态码。客户端实际上收到一个无法使用的响应，但是状态码却提示一切正常。
 
-<img src="screenshot\38-restapiget.png" style="zoom:50%;" />
-
-​	有一种更好的方式是在响应中使用 HTTP 404（NOT FOUND）状态，代码如下：
+<img src="screenshot\38-restapiget.png" style="zoom:50%;" />			      有一种更好的方式是在响应中使用 HTTP 404（NOT FOUND）状态，代码如下：
 
 ```java
 @GetMapping("/{id}")
@@ -4064,7 +4079,7 @@ public ResponseEntity<Taco> tacoById2(@PathVariable("id") Long id) {
 
 
 
-### （2）另一种请求 URL
+### （2）解析 URL 和请求参数
 
 ​	有可能请求的 URL 被设计为 `/design/taco?id=1` 这种形式，有几种方式来获取参数：
 
@@ -4086,9 +4101,116 @@ public ResponseEntity<Taco> tacoById3(Long id) {
 
 
 
+> **方式2：通过 HttpServletRequest 接收，POST、GET 方式都可以**
+
+```java
+@GetMapping("/taco")
+public ResponseEntity<Taco> tacoById4(HttpServletRequest request) {
+	Long id = Long.valueOf(request.getParameter("id"));
+	Optional<Taco> optTaco = tacoRepo.findById(id);
+	if (optTaco.isPresent()) {
+		log.info("Query taco succ: " + optTaco.get());
+		return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
+	}
+	return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+}	
+```
+
+<img src="screenshot\41-restapiget.png" style="zoom:60%;" />
+
+​	验证下接收 POST 参数，修改代码为：
+
+```java
+@PostMapping("/taco")
+public ResponseEntity<Taco> tacoById4(HttpServletRequest request) {
+	System.out.println(request.getParameter("id"));
+	Long id = Long.valueOf(request.getParameter("id"));
+	Optional<Taco> optTaco = tacoRepo.findById(id);
+	if (optTaco.isPresent()) {
+		log.info("Query taco succ: " + optTaco.get());
+		return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
+	}
+	return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+}
+```
+
+​	使用以下配置发起请求
+
+<img src="screenshot\43-restapipost.png" style="zoom:100%;" />
+
+​	服务端正常解析接收数据
+
+<img src="screenshot\44-restapipost.png" style="zoom:60%;" />
 
 
 
+> **方式3：使用 @RequestParam 注解，POST、GET方式都可以**
+
+​	当方法参数名跟上送参数不一致时，需要使用 **@RequestParam** 注解，但是使用该注解的参数若没上送会报错 400。
+
+```java
+@GetMapping("/taco")
+public ResponseEntity<Taco> tacoById5(@RequestParam("id") Long ids) {		
+	Optional<Taco> optTaco = tacoRepo.findById(ids);
+	if (optTaco.isPresent()) {
+		log.info("Query taco succ: " + optTaco.get());
+		return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
+	}
+	return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+}
+```
+
+<img src="screenshot\42-restapiget.png" style="zoom:60%;" />
+
+​	使用 POST 方式表单提交，和Content-Type: 为 application/x-www-form-urlencoded编码的内容，@RequestParam 能正常解析，修改注解为：
+
+```java
+@PostMapping("/taco")
+```
+
+<img src="screenshot\45-restapipost.png" style="zoom:100%;" />
+
+​	服务端正常解析接收数据
+
+<img src="screenshot\46-restapipost.png" style="zoom:60%;" />
+
+
+
+> **方式4：通过 bean 接收参数**
+
+​	比如用户登录上送用户名和密码 `login?username=xxx&password=yyy`，先创建一个对应的 Java Bean：
+
+```java
+public class UserLoginForm {
+    private String username;
+    private String password;
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }    
+}
+```
+
+​	在 Controller 中使用该类：
+
+```java
+@RequestMapping(method = RequestMethod.GET, path = "/login")
+public ResponseEntity<UserLoginForm> login(UserLoginForm loginForm) {
+  	// ...
+}
+```
+
+
+
+### （3）发送数据到服务器
 
 
 
