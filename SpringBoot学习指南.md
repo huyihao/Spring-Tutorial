@@ -3927,19 +3927,236 @@ REST的另一重要部分就是为既定好请求的类型来响应正确的状�
 
 ## 2、Spring 解析请求参数
 
-​	对不同的请求传递的参数，需要使用不同的解析方法
+​	对不同的方式请求传递进来的参数，需要使用不同的解析方法。
 
-### （1）请求路径参数
+### （1）请求 URL 参数
+
+​	**注意：只支持 GET 请求，POST 会报错 403。**
+
+​	就是参数需要从请求 URL 中解析出来，首先要 @GetMapping 注解里进行参数占位，然后方法参数使用 `@PathVariable` 注解解析获取参数。
+
+​	比如：`/param/1`，获取参数1
+
+```java
+@Slf4j
+@RestController
+@RequestMapping("/param")
+public class ParseRequestParamDemoController {
+
+	@GetMapping("/{id}")
+	public ResponseEntity<Map> getPathParam(@PathVariable("id") Long id) {
+		log.info("id = " + id);		
+		Map<String, Object> map = new HashMap<>();
+		map.put("id", id);
+		return new ResponseEntity<>(map, HttpStatus.OK);	
+	}
+  
+}
+```
+
+​	测试效果：
+
+<img src="screenshot\47-urlget.png" style="zoom:60%;" />
+
+​	如果要多个路径参数，比如：`/param/zhangsan/20`
+
+```java
+@GetMapping("/{username}/{age}")
+public ResponseEntity<Map> getPathParam2(@PathVariable("username") String user, @PathVariable("age") Integer age) {
+	log.info("username = " + user + ", age = " + age);
+	Map<String, Object> map = new HashMap<>();
+	map.put("username", user);
+	map.put("age", age);
+	return new ResponseEntity<>(map, HttpStatus.OK);				
+}
+```
+
+​	测试效果：
+
+<img src="screenshot\48-urlget.png" style="zoom:60%;" />
 
 
 
 ### （2）GET 请求参数
 
+​	第一种类型是（1）中的路径参数，第二种是形如 `/param?username=xxx&age=10` 的请求参数。
+
+>  **方式1：方法参数名跟提交参数一致**
+
+```java
+@GetMapping
+public ResponseEntity<Map> getRequestParam(Long id) {
+	log.info("id = " + id);		
+	Map<String, Object> map = new HashMap<>();
+	map.put("id", id);
+	return new ResponseEntity<>(map, HttpStatus.OK);
+}
+```
+
+测试：
+
+<img src="screenshot\49-get.png" style="zoom:60%;" />
+
+
+
+> **方式2：通过 HttpServletRequest 接收，POST、GET 方式都可以**
+
+```java
+@GetMapping
+public ResponseEntity<Map> getRequestParam2(HttpServletRequest request) {
+	Long id = Long.valueOf(request.getParameter("id"));
+	log.info("id = " + id);		
+	Map<String, Object> map = new HashMap<>();
+	map.put("id", id);
+	return new ResponseEntity<>(map, HttpStatus.OK);
+}
+```
+
+
+
+> **方式3：使用 @RequestParam 注解，POST、GET方式都可以**
+
+​	当方法参数名跟上送参数不一致时，需要使用 **@RequestParam** 注解，但是使用该注解的参数若没上送会报错 400。
+
+```java
+@GetMapping
+public ResponseEntity<Map> getRequestParam3(@RequestParam("id") Long ids) {
+	log.info("id = " + ids);		
+	Map<String, Object> map = new HashMap<>();
+	map.put("id", ids);
+	return new ResponseEntity<>(map, HttpStatus.OK);
+}	
+```
+
+
+
+>  **方式4：通过 bean 接收参数**
+
+​	比如用户登录上送用户名和密码 `login?username=xxx&password=yyy`，先创建一个对应的 Java Bean：
+
+```java
+public class UserLoginForm {
+  
+    private String username;
+    private String password;
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    
+	@Override
+	public String toString() {
+		return "UserLoginForm [username=" + username + ", password=" + password + "]";
+	}    
+}
+```
+
+​	在 Controller 中使用该类：
+
+```java
+@GetMapping("/login")
+public ResponseEntity<UserLoginForm> login(UserLoginForm loginForm) {
+	log.info("loginForm = " + loginForm);
+	return new ResponseEntity<>(loginForm, HttpStatus.OK);
+}
+```
+
+测试：
+
+<img src="screenshot\50-get.png" style="zoom:60%;" />
+
 
 
 ### （3）POST 请求参数
 
+​	POST 请求通常是上送表单数据，或者Content-Type: 为 application/x-www-form-urlencoded编码的内容，也可以是直接请求 json 数据。
 
+> **方式1：通过 HttpServletRequest 接收，POST、GET 方式都可以**
+
+​	不支持 Content-Type 为 非 form-data 和 x-www-form-urlencoded 类型的请求，比如 application/json，会报错 500。
+
+```java
+@PostMapping("/login")
+public ResponseEntity<Map> login(HttpServletRequest request) {
+	Long id = Long.valueOf(request.getParameter("id"));
+	log.info("id = " + id);		
+	Map<String, Object> map = new HashMap<>();
+	map.put("id", id);
+	return new ResponseEntity<>(map, HttpStatus.OK);
+}	
+```
+
+测试：
+
+<img src="screenshot\51-post.png" style="zoom:60%;" />
+
+
+
+<img src="screenshot\52-post.png" style="zoom:60%;" />
+
+<img src="screenshot\53-post.png" style="zoom:60%;" />
+
+
+
+> **方式2：使用 @RequestParam 注解，POST、GET方式都可以**
+
+```java
+@PostMapping("/login")
+public ResponseEntity<Map> login2(@RequestParam("id") Long ids) {
+	log.info("id = " + ids);		
+	Map<String, Object> map = new HashMap<>();
+	map.put("id", ids);
+	return new ResponseEntity<>(map, HttpStatus.OK);
+}	
+```
+
+​	不支持 Content-Type 为 非 form-data 和 x-www-form-urlencoded 类型的请求，比如 application/json，会报错 **400 bad request**。
+
+<img src="screenshot\54-post.png" style="zoom:60%;" />
+
+
+
+> **方式3：直接使用 bean 接收参数**
+
+```java
+@PostMapping("/login")
+public ResponseEntity<UserLoginForm> login3(UserLoginForm loginForm) {
+	log.info("loginForm = " + loginForm);
+	return new ResponseEntity<>(loginForm, HttpStatus.OK);
+}
+```
+
+<img src="screenshot\55-post.png" style="zoom:60%;" />
+
+
+
+> **方式4：使用 @RequestBody 注解**
+
+​	**@RequestBody** 注解常用来处理 content-type 不是默认的 application/x-www-form-urlcoded 编码的内容，比如说：application/json 或者是 application/xml 等。一般情况下来说常用其来处理 application/json 类型。
+
+```java
+@PostMapping("/login")
+public ResponseEntity<UserLoginForm> login4(@RequestBody UserLoginForm loginForm) {
+	log.info("loginForm = " + loginForm);
+	return new ResponseEntity<>(loginForm, HttpStatus.OK);
+}	
+```
+
+​	使用 JSON 请求参数体
+
+<img src="screenshot\56-post.png" style="zoom:60%;" />
+
+​	使用 form-data 或 x-www-form-urlcoded 请求参数会报错 **415 Unsupported Media Type**。
+
+<img src="screenshot\57-post.png" style="zoom:60%;" />
 
 
 
@@ -4081,24 +4298,6 @@ public ResponseEntity<Taco> tacoById2(@PathVariable("id") Long id) {
 
 ### （2）解析 URL 和请求参数
 
-​	有可能请求的 URL 被设计为 `/design/taco?id=1` 这种形式，有几种方式来获取参数：
-
-> **方式1：方法参数名跟提交参数一致**
-
-```java
-@GetMapping("/taco")
-public ResponseEntity<Taco> tacoById3(Long id) {
-	Optional<Taco> optTaco = tacoRepo.findById(id);
-	if (optTaco.isPresent()) {
-		log.info("Query taco succ: " + optTaco.get());
-		return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
-	}
-	return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
-}
-```
-
-<img src="screenshot\40-restapiget.png" style="zoom:50%;" />
-
 
 
 > **方式2：通过 HttpServletRequest 接收，POST、GET 方式都可以**
@@ -4176,45 +4375,128 @@ public ResponseEntity<Taco> tacoById5(@RequestParam("id") Long ids) {
 
 
 
-> **方式4：通过 bean 接收参数**
-
-​	比如用户登录上送用户名和密码 `login?username=xxx&password=yyy`，先创建一个对应的 Java Bean：
-
-```java
-public class UserLoginForm {
-    private String username;
-    private String password;
-    public String getUsername() {
-        return username;
-    }
-    public void setUsername(String username) {
-        this.username = username;
-    }
-    public String getPassword() {
-        return password;
-    }
-    public void setPassword(String password) {
-        this.password = password;
-    }    
-}
-```
-
-​	在 Controller 中使用该类：
-
-```java
-@RequestMapping(method = RequestMethod.GET, path = "/login")
-public ResponseEntity<UserLoginForm> login(UserLoginForm loginForm) {
-  	// ...
-}
-```
-
-
-
 ### （3）发送数据到服务器
 
+​	在 taco 页面填写表单并发送数据到服务器，代码如下：
+
+```java
+@PostMapping(consumes="application/json")
+@ResponseStatus(HttpStatus.CREATED)
+public Taco postTaco(@RequestBody Taco taco) {
+	return tacoRepo.save(taco);
+}
+```
+
+​	`postTaco()` 方法使用 `@PostMapping` 注解表示只处理 POST 请求，这里没有指定 **path** 属性，所以默认按控制器类级别 `@RequestMapping` 注解设置的 **path** 为准。
+
+​	这里设置了 **consumes** 属性，表示只处理报文头 Content-Type: application/json 的请求，对应的 **produces** 属性用于指定请求输出。
+
+​	方法头参数带有 `@RequestBody` 注解，表示请求应该被转换为一个 Taco 对象并绑定到该参数上。该注解表示要将请求体中的 JSON 绑定到对象，而不是请求参数（表单参数、请求参数）绑定到 Taco 对象上。
+
+​	方法还使用了 `@ResponseStatus(HttpStatus.CREATED)` 注解，正常情况下所有响应的 HTTP 状态码都是200（OK），表示请求是成功的。尽管我们都希望得到 HTTP 200，但是有些时候他的描述性不足。在 POST 请求新增数据的情况下，201（CREATED）的 HTTP 状态更具有描述性，它会告诉客户端，请求不仅成功了，还创建了一个资源。在适当的地方使用该注解将最具描述性和最精确的 HTTP 状态码传递给客户端。
 
 
 
+### （4）更新数据
+
+​	POST 请求通常用来创建资源，而 PUT、PATCH 请求通常用来更新资源。
+
+​	尽管 PUT 经常被用来更新资源，但它在语义上其实是 GET 的对立面。GET 请求用来从服务端往客户端传输数据，而 PUT 请求则是从客户端往服务端发送数据。
+
+​	从这个意义上将，**PUT 真正的目的是执行大规模的替换（replacement）操作，而不是更新操作；PATCH 的目的是对资源数据打补丁或局部更新**。
+
+​	比如要更新某个订单的信息，使用 PUT 请求处理，使用 `@PutMapping` 注解：
+
+```java
+@PutMapping(path="/{orderId}", consumes="application/json")
+public Order putOrder(@RequestBody Order order) {		
+	return repo.save(order);	    
+}	
+```
+
+测试：
+
+<img src="screenshot\59-put.png" style="zoom:60%;" />
+
+<img src="screenshot\58-put.png" style="zoom:60%;" />
+
+​	如果说 PUT 请求所做的是对资源数据的大规模替换，那么 PATCH 请求就是处理局部更新，使用 `@PatchMapping` 注解：
+
+```java
+@PatchMapping(path = "/{orderId}", consumes = "application/json")
+public Order patchOrder(@PathVariable("orderId") Long orderId, 
+						@RequestBody Order patch) {
+
+	Order order = repo.findById(orderId).get();
+	if (patch.getDeliveryName() != null) {
+		order.setDeliveryName(patch.getDeliveryName());
+	}
+	if (patch.getDeliveryStreet() != null) {
+		order.setDeliveryStreet(patch.getDeliveryStreet());
+	}
+	if (patch.getDeliveryCity() != null) {
+		order.setDeliveryCity(patch.getDeliveryCity());
+	}
+	if (patch.getDeliveryState() != null) {
+		order.setDeliveryState(patch.getDeliveryState());
+	}
+	if (patch.getDeliveryZip() != null) {
+		order.setDeliveryZip(patch.getDeliveryState());
+	}
+	if (patch.getCcNumber() != null) {
+		order.setCcNumber(patch.getCcNumber());
+	}
+	if (patch.getCcExpiration() != null) {
+		order.setCcExpiration(patch.getCcExpiration());
+	}
+	if (patch.getCcCvv() != null) {
+		order.setCcCvv(patch.getCcCvv());
+	}
+	return repo.save(order);
+}
+```
+
+​	在语义上 PATCH 表示局部更新，但是实际处理还是要依赖业务代码。
+
+测试：
+
+<img src="screenshot\60-patch.png" style="zoom:60%;" />
+
+<img src="screenshot\61-patch.png" style="zoom:60%;" />
+
+
+
+### （5）删除数据
+
+​	使用 DELETE 请求语义上表示删除数据，配套的注解是 `@DeleteMapping` ，示例代码如下：
+
+```java
+@DeleteMapping("/{orderId}")
+@ResponseStatus(HttpStatus.NO_CONTENT)
+public void deleteOrder(@PathVariable("orderId") Long orderId) {
+	try {
+		repo.deleteById(orderId);
+	} catch (EmptyResultDataAccessException e) {
+		log.error("delete order(" + orderId + ") exception", e);
+	}
+}	
+```
+
+​	首先会从 URL 中接收到订单 id，然后直接根据id删除数据库中的记录，若数据库中不存在该记录会抛出 **EmptyResultDataAccessException** 异常，跟删除成功的结果是一样的，不管如何最终都是数据资源不存在，所以使用 `@ResponseStatus(HttpStatus.NO_CONTENT)` 表示资源不存在。
+
+测试：
+
+<img src="screenshot\63-delete.png" style="zoom:60%;" />
+
+<img src="screenshot\62-delete.png" style="zoom:60%;" />
+
+​	如果程序逻辑处理的不同分支要使用不同的响应码，那方法返回值应该是一个 **ResponseEntity** 对象。
+
+​	
+
+
+
+## 3、HATEOAS 自描述API
 
 
 
