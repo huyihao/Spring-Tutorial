@@ -2,6 +2,8 @@ package tacos.web.api;
 
 import java.util.Optional;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -55,8 +59,11 @@ public class TacoApiController {
 		return null;
 	}*/
 	
+	/**
+	 * 通过id获取taco，但是当taco不存在时，返回的HTTP状态码为404
+	 */
 	@GetMapping("/{id}")
-	public ResponseEntity<Taco> tacoById(@PathVariable("id") Long id) {
+	public ResponseEntity<Taco> tacoById2(@PathVariable("id") Long id) {
 		Optional<Taco> optTaco = tacoRepo.findById(id);
 		if (optTaco.isPresent()) {
 			log.info("Query taco succ: " + optTaco.get());
@@ -64,6 +71,48 @@ public class TacoApiController {
 		}
 		return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
 	}	
+	
+	/**
+	 * 请求URL: "/taco?id=xxx"
+	 * 请求参数名和方法参数名对应即可自动获取参数
+	 */
+	/*@GetMapping("/taco")
+	public ResponseEntity<Taco> tacoById3(Long id) {
+		Optional<Taco> optTaco = tacoRepo.findById(id);
+		if (optTaco.isPresent()) {
+			log.info("Query taco succ: " + optTaco.get());
+			return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
+		}
+		return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+	}*/	
+	
+	/**
+	 * 请求URL: "/taco?id=xxx"
+	 * 从HttpServletRequest参数
+	 */	
+	//@PostMapping("/taco")
+	/*@GetMapping("/taco")
+	public ResponseEntity<Taco> tacoById4(HttpServletRequest request) {		
+		Long id = Long.valueOf(request.getParameter("id"));
+		Optional<Taco> optTaco = tacoRepo.findById(id);
+		if (optTaco.isPresent()) {
+			log.info("Query taco succ: " + optTaco.get());
+			return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
+		}
+		return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+	}*/
+	
+	@PostMapping("/taco")
+	//@GetMapping("/taco")	
+	public ResponseEntity<Taco> tacoById5(@RequestParam("id") Long ids) {		
+		Optional<Taco> optTaco = tacoRepo.findById(ids);
+		if (optTaco.isPresent()) {
+			log.info("Query taco succ: " + optTaco.get());
+			return new ResponseEntity<Taco>(optTaco.get(), HttpStatus.OK);			
+		}
+		return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+	}		
+	
 	
 	@PostMapping(consumes="application/json")
 	@ResponseStatus(HttpStatus.CREATED)

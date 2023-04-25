@@ -4492,24 +4492,574 @@ public void deleteOrder(@PathVariable("orderId") Long orderId) {
 
 ​	如果程序逻辑处理的不同分支要使用不同的响应码，那方法返回值应该是一个 **ResponseEntity** 对象。
 
+
+
+
+
+## 3、Spring HATEOAS
+
+​	HATEOAS 的全名是**超媒体作为应用状态引擎（Hypermedia as the Engine of Application State）**，是一种创建自描述 API 的方式。API 返回的资源中会包含相关资源的链接，客户端只需了解最小的 API URL 信息就能导航整个 API。这种方式能够掌握 API 所提供的资源之间的关系，客户端能够基于 API 的 URL 中所发现的关系对它们进行遍历。
+
+​	比如，查询用户最近创建的 taco 列表，使用常规 API 开发的方式，在控制器中创建一个方法：
+
+```java
+@GetMapping("/recent")
+public List<Taco> getRecentTacos() {
+	PageRequest page = PageRequest.of(0, 12, Sort.by("createdAt").descending());
+	List<Taco> tacos = tacoRepo.findAll(page).getContent();
+	return tacos;
+} 	
+```
+
+​	访问 `/taco/recent` ，效果如下：
+
+```
+[
+    {
+        "id": 2,
+        "name": "kk's taco",
+        "createdAt": "2023-03-10T03:40:04.000+00:00"
+    },
+    {
+        "id": 1,
+        "name": "huyihao's taco",
+        "createdAt": "2023-03-09T12:24:20.000+00:00"
+    }
+]
+```
+
+​	如果要访问某个 taco 的详情，则在点击对应 taco 时必须编写对应的 JavaScript 代码将 id 属性拼接到 `/taco` URL 上，再发起请求，比如 `/taco/2` 。但是如果 API 发现了变化，硬编码的信息都要跟着修改，而使用 HATEOAS API，返回的响应报文如下：
+
+```
+{
+    "_embedded": {
+        "tacoModels": [
+            {
+                "taco": {
+                    "name": "kk's taco",
+                    "createdAt": "2023-03-10T03:40:04.000+00:00"
+                },
+                "_links": {
+                    "self": {
+                        "href": "http://localhost:8080/taco/2"
+                    }
+                }
+            },
+            {
+                "taco": {
+                    "name": "huyihao's taco",
+                    "createdAt": "2023-03-09T12:24:20.000+00:00"
+                },
+                "_links": {
+                    "self": {
+                        "href": "http://localhost:8080/taco/1"
+                    }
+                }
+            }
+        ]
+    }
+}
+```
+
+​	这样无需硬编码访问 URL，即使 API 发生变化也不需要修改 JavaScript 代码。
+
+​	Spring HATEOAS 项目是一个 API 库，我们可以使用它轻松创建遵循 HATEOAS（超文本作为应用程序状态引擎）原则的 REST 表示。
+
+​	**一般来说，该原则意味着 API 应通过返回有关后续潜在步骤的相关信息以及每个响应来指导客户端完成应用程序。**将客户端和服务器解耦，理论上允许 API 在不破坏客户端的情况下更改其 URI 方案。
+
+### （1）准备
+
+​	引入依赖，使用 Spring Boot 时引入对应的 starter 即可（需要指定 spring-boot-starter-parent 为父工程）：
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-hateoas</artifactId>
+</dependency>
+```
+
+
+
+### （2）添加 HATEOAS 支持
+
+​	在Spring HATEOAS项目中，我们既不需要查找Servlet上下文，也不需要将路径变量连接到基本URI。
+
+​	相反，**Spring HATEOAS 提供了三个用于创建 URI 的抽象 – RepresentationModel、Link 和 WebMvcLinkBuilder**。我们可以使用这些来创建元数据并将其与资源表示相关联。
+
+#### Ⅰ、向资源添加超媒体支持
+
+​	Spring Hateoas 提供了一个名为 *RepresentationModel* 的基类，以便在创建资源表示时继承：
+
+```java
+package tacos.web.api;
+
+import org.springframework.hateoas.RepresentationModel;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import tacos.Taco;
+
+public class TacoModel extends RepresentationModel<TacoModel> {
+
+	private final Taco taco;
+
+	/**
+	 * 参数加上@JsonProperty("content")会有以下效果:
+	 * 
+	 *   "content" : {
+     *	 	"name" : "huyihao's taco",
+     *		"createdAt" : "2023-03-09T12:24:20.000+00:00"
+     *	 }
+     *
+     * 默认效果等同于@JsonProperty("taco")
+	 *   "taco" : {
+     *	 	"name" : "huyihao's taco",
+     *		"createdAt" : "2023-03-09T12:24:20.000+00:00"
+     *	 }     
+	 */
+	public TacoModel(Taco taco) {		
+		this.taco = taco;
+	}
+
+	public Taco getTaco() {
+		return taco;
+	}
+	
+}
+```
+
+​	**客户资源从 RepresentationModel 类扩展为继承 add（） 方法**。因此，一旦我们创建了一个链接，我们就可以轻松地将该值设置为资源表示形式，而无需向其添加任何新字段。
+
+
+
+#### Ⅱ、创建链接
+
+​	**Spring HATEOAS 提供了一个链接对象来存储元数据（资源的位置或 URI）。**
+
+​	首先，我们将手动创建一个简单的链接：
+
+```java
+Link link = new Link("http://localhost:8080/taco/1");
+tacoModel.add(link);    // 控制器方法直接返回 TacoModel 对象
+```
+
+​	Link 对象遵循 *Atom* 链接语法，由标识与资源关系的 *rel* 和 *href* 属性（即实际链接本身）组成。
+
+​	下面是客户资源现在包含新链接的外观：
+
+```json
+{
+	"taco": {
+		"name": "kk's taco",
+		"createdAt": "2023-03-10T03:40:04.000+00:00"
+	},
+	"_links": {
+		"self": {
+			"href": "http://localhost:8080/taco/1"
+		}
+	}
+}
+```
+
+​	与响应关联的 URI 被限定为*自*链接。*自我*关系的语义很清楚——它只是可以访问资源的规范位置。
+
+
+
+#### Ⅲ、创建更好的链接
+
+​	该库提供的另一个非常重要的抽象是**WebMvcLinkBuilder - 它**通过避免硬编码链接来简化URI的构建。
+
+​	以下代码片段演示如何使用 *WebMvcLinkBuilder* 类构建客户自链接：
+
+```java
+Link link = WebMvcLinkBuilder.linkTo(RecentTacosController.class)
+						   .slash(taco.getId())
+						   .withRel("self");
+```
+
+一起来看看：
+
+- *linkTo（）* 方法检查控制器类并获取其根映射
+- *slash（）* 方法将 *tacoId* 值添加为链接的路径变量
+- 最后，*withSelfMethod（）* 将关系限定为自链接
+
+
+代码如下：
+
+```java
+@GetMapping("/{tacoId}")
+public TacoModel getTacoById(@PathVariable Long tacoId) {
+	Optional<Taco> taco = tacoRepo.findById(tacoId);
+	TacoModel tacoModel = new TacoModel(taco.get());
+	Link link = WebMvcLinkBuilder.linkTo(RecentTacosController.class)
+								 .slash(tacoModel.getTaco().getId())
+								 .withRel("self");
+	tacoModel.add(link);
+	return tacoModel;
+}
+```
+
+测试效果：
+
+<img src="screenshot\64-hateoasapi.png" style="zoom:60%;" />
+
+​	`linkTo(RecentTacosController.class)` 的效果体现在，href 超链接的前缀是 `http://localhost:8080/taco` ，`.slash(tacoModel.getTaco().getId())` 的效果体现在超链接的后缀是 `1` ，`.withRel("self")` 的效果体现在表示超链接的 json 的属性是 `self` 。
+
+​	如果想要去除多余的 `taco` 属性，希望返回的报文是下面这样的：
+
+```json
+{
+    "id": 1,
+    "name": "huyihao's taco",
+    "createdAt": "2023-03-09T12:24:20.000+00:00",
+    "_links": {
+        "self": {
+            "href": "http://localhost:8080/taco/1"
+        }
+    }
+}
+```
+
+​	首先要重新定义一个继承 *RepresentationModel* 的 Taco 类：
+
+```java
+package tacos.web.api;
+
+import java.util.Date;
+
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+import org.springframework.hateoas.RepresentationModel;
+
+import lombok.Data;
+
+@Data
+public class Taco extends RepresentationModel<Taco> {
+	
+	  private Long id;	 
+	  private String name;	 
+	  private Date createdAt;
+	  
+	  public Taco(tacos.Taco taco) {
+		  this.id = taco.getId();
+		  this.name = taco.getName();
+		  this.createdAt = taco.getCreatedAt();
+	  }
+}
+```
+
+​	控制器定义一个映射路径不冲突的新方法：
+
+```java
+@GetMapping("/id/{tacoId}")
+public tacos.web.api.Taco getTacoById2(@PathVariable Long tacoId) {
+	Optional<Taco> taco = tacoRepo.findById(tacoId);
+	tacos.web.api.Taco tacoModel = new tacos.web.api.Taco(taco.get());
+	Link link = WebMvcLinkBuilder.linkTo(RecentTacosController.class)
+								 .slash(tacoModel.getId())
+								 .withRel("self");
+	tacoModel.add(link);
+	return tacoModel;
+}
+```
+
+​	测试：
+
+<img src="screenshot\65-hateoasapi.png" style="zoom:60%;" />
+
+
+
+#### Ⅳ、获取资源列表
+
+​	现在我们希望创建一个返回资源列表的 HATEOAS 的 API，返回的报文中带有每个 taco 的访问链接，形式如下所示：
+
+```json
+{
+    "_embedded": {
+        "tacoes": [
+            {
+                "id": 2,
+                "name": "kk's taco",
+                "createdAt": "2023-03-10T03:40:04.000+00:00",
+                "_links": {
+                    "self": {
+                        "href": "http://localhost:8080/taco/2"
+                    }
+                }
+            },
+            {
+                "id": 1,
+                "name": "huyihao's taco",
+                "createdAt": "2023-03-09T12:24:20.000+00:00",
+                "_links": {
+                    "self": {
+                        "href": "http://localhost:8080/taco/1"
+                    }
+                }
+            }
+        ]
+    }
+}
+```
+
+​	新增控制器方法：
+
+```java
+@GetMapping("/recent2")
+public CollectionModel<tacos.web.api.Taco> getRecentTacos2() {
+	PageRequest page = PageRequest.of(0, 12, Sort.by("createdAt").descending());
+	List<Taco> tacos = tacoRepo.findAll(page).getContent();
+	List<tacos.web.api.Taco> tacosList = new ArrayList<>();
+	for (Taco taco : tacos) {
+		Link link = WebMvcLinkBuilder.linkTo(RecentTacosController.class)
+									 .slash(taco.getId())
+									 .withRel("self");
+		tacos.web.api.Taco apiTaco = new tacos.web.api.Taco(taco);
+		apiTaco.add(link);
+		tacosList.add(apiTaco);
+	}
+	return CollectionModel.of(tacosList);
+}
+```
+
+​	测试：
+
+<img src="screenshot\66-hateoasapi.png" style="zoom:60%;" />
+
+
+
+###（3）嵌套的关系
+
+​	每个 taco 都有对应的配料信息，我们希望创建一个查询 taco 的 HATEOAS API，返回配料的信息和访问配料的连接，报文如下：
+
+```java
+{
+    "id": 1,
+    "name": "huyihao's taco",
+    "createdAt": "2023-03-09T12:24:20.000+00:00",
+    "_links": {
+        "allIngredients": [
+            {
+                "href": "http://localhost:8080/ingredients/COTO"
+            },
+            {
+                "href": "http://localhost:8080/ingredients/FLTO"
+            }
+        ],
+        "self": {
+            "href": "http://localhost:8080/taco/1"
+        }
+    }
+}
+```
+
+​	控制器新增方法：
+
+```java
+@GetMapping("/{tacoId}/ingredient")
+public tacos.web.api.Taco getTacoIngredientById(@PathVariable Long tacoId) {
+	Optional<Taco> taco = tacoRepo.findById(tacoId);
+	tacos.web.api.Taco tacoModel = new tacos.web.api.Taco(taco.get());		
+	Link link = WebMvcLinkBuilder.linkTo(RecentTacosController.class)
+								 .slash(tacoModel.getId())
+								 .withRel("self");
+	for (Ingredient ingredient : taco.get().getIngredients()) {
+		Link ingredientLink = WebMvcLinkBuilder.linkTo(IngredientApiController.class)
+											   .slash(ingredient.getId())
+											   .withRel("allIngredients");
+		tacoModel.add(ingredientLink);
+	}
+	
+	tacoModel.add(link);
+	return tacoModel;
+}
+```
+
+​	测试：
+
+<img src="screenshot\67-hateoasapi.png" style="zoom:60%;" />
+
 ​	
 
 
 
-## 3、HATEOAS 自描述API
+## 4、启用后端数据服务
+
+### （1）自动创建的 REST API
+
+​	Spring Data 有一种特殊的魔法，它能够基于我们定义的接口自动创建 repository 实现，还能**帮助我们定义应用的 API**。
+
+​	Spring Data REST 是 Spring Data 家族中的另一个成员，它会为 Spring Data 创建的 repository 自动生成 REST API。只需将 Spring Data REST 添加到构建文件中，就能得到一套 API，操作和定义 repository 接口是一致的。
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-data-rest</artifactId>
+</dependency>
+```
+
+​	添加完依赖后，不需要做什么其他事情，应用的自动配置功能会为 Spring Data 创建的所有 repository 自动创建 RESTAPI。
+
+​	为了统一自动生成的 API 的路径，也为了避免与所编写的控制器发生冲突，在配置文件中添加以下配置：
+
+```properties
+spring.data.rest.base-path=/api
+```
+
+​	访问 `http://localhost/api` 即可获取所有可访问的 API 的端点链接：
+
+<img src="screenshot\68-hateoasapi.png" style="zoom:60%;" />
+
+​	访问 ingredient 端点
+
+<img src="screenshot\69-restapi.png" style="zoom:60%;" />
+
+​	API 端点中，每个实体的后缀都是单词复数，如果是元音字母，复数为es，比如 taco 本来的链接前缀是 `http://localhost:8080/api/tacoes` ，如果想统一复数为s，则为其添加类注解：
+
+```java
+...
+@RestResource(rel = "tacos", path = "tacos")
+...
+public class Taco {
+
+}
+```
+
+​	@RestResource 注解能够为实体提供任何我们想要的关系名和路径。在本例中，我们将它们都设置成 "tacos"。
 
 
 
+### （2）分页和排序
+
+​	为了在查询 taco 时有分页和排序的能力，定义 TacoRepository 时继承了 *PagingAndSortingRepository* ，如下：
+
+```java
+package tacos.data;
+
+import org.springframework.data.repository.PagingAndSortingRepository;
+import tacos.Taco;
+
+/**
+ * 继承了PagingAndSortingRepository就具备了分页获取并排序的能力
+ */
+public interface TacoRepository extends PagingAndSortingRepository<Taco, Long> {
+
+}
+```
+
+​	所以自动生成的 REST API 如下：
+
+```http
+http://localhost:8080/api/tacos{?page,size,sort}
+```
+
+​	**size** 表示每页数据的数量，**page** 表示数据页序号（从0开始），**sort** 表示数据按照什么排序。
+
+​	如果想获取第一页 taco，包含5个条目，可以 GET 请求：
+
+```http
+http://localhost:8080/api/tacos?size=5
+```
+
+​	如果想获取第二页的 taco，可以 GET 请求：
+
+```http
+http://localhost:8080/api/tacos?size=5&page=1
+```
+
+​	HATEOAS 返回的报文中分为3部分：
+
+* 第一部分 **"_embedded"** 是被查询的数据本身。
+* 第二部分 **"_links"** 返回第一页、下一页、上一页和最后一页的链接。
+* 第三部分 **"page"** 返回数据总数、总数据页数等信息。
+
+<img src="screenshot\70-restapi.png" style="zoom:60%;" />
+
+​	如果要对查询出来的数据进行排序，比如按照创建日期字段降序，则请求的 URL :
+
+```http
+http://localhost:8080/api/tacos?size=2&sort=createdAt,desc
+```
+
+<img src="screenshot\71-restapi.png" style="zoom:60%;" />
+
+​	在比如根据名字进行升序，则请求的 URL 为：
+
+```http
+http://localhost:8080/api/tacos?size=2&sort=name,acs
+```
+
+<img src="screenshot\72-restapi.png" style="zoom:60%;" />
 
 
 
+### （3）添加自定义的端点
+
+​	有时候自动生成的 Spring Data REST API 不能满足需求，需要自行定义对应的控制器和方法，为了保持跟 Spring Data REST 生成端点的 API 保持一致，可以在控制器上的映射路径注解加上 `/api` ，如：
+
+```java
+@RequestMapping("/api/taco")
+```
+
+​	但是这样硬编码了，如果 `spring.data.rest.base-path` 参数的设置有变化，就意味着该控制器硬编码要重新修改以保持一致，更好的方案是使用 `@RepositoryRestController` 注解，所有映射将会具有和 spring.data.rest.base-path 属性一样的前缀。
+
+> **注意：使用了 `@RepositoryRestController` 注解，就不能在控制器上使用 `@RequestMapping` 注解**
+
+​	比如新增一个自定义端点，根据 id 查询 taco：
+
+```java
+@RepositoryRestController
+public class RecentTacosController {
+    // other code
+	@Value("${spring.data.rest.base-path}")
+	private String apiBasePath;
+	
+	@GetMapping(path = "/tacos/{tacoId}", produces = "application/hal+json")
+	public ResponseEntity<tacos.web.api.Taco> getTacoById3(@PathVariable Long tacoId) {
+		Optional<Taco> taco = tacoRepo.findById(tacoId);
+		tacos.web.api.Taco tacoModel = new tacos.web.api.Taco(taco.get());
+	    Link link = WebMvcLinkBuilder.linkTo(RecentTacosController.class)	    							 
+	            					 .slash(apiBasePath + "/tacos/" + tacoId)
+	            					 .withRel("self");
+	    tacoModel.add(link);
+	    return new ResponseEntity<>(tacoModel, HttpStatus.OK);
+	}
+}
+```
+
+​	测试：
+
+<img src="screenshot\73-restapi.png" style="zoom:60%;" />
+
+​	生成链接时，除了可以使用 `slash()` 指定，也可以调用其他控制器方法生成。
+
+```java
+@GetMapping(path = "/tacos/recent", produces = "application/hal+json")
+public ResponseEntity<CollectionModel<tacos.web.api.Taco>> getRecentTacos3() {
+	PageRequest page = PageRequest.of(0, 12, Sort.by("createdAt").descending());
+	List<Taco> tacos = tacoRepo.findAll(page).getContent();
+	List<tacos.web.api.Taco> tacosList = new ArrayList<>();
+	for (Taco taco : tacos) {
+//		    Link link = WebMvcLinkBuilder.linkTo(RecentTacosController.class)
+//										 .slash(taco.getId())
+//										 .withRel("self");
+		Link link = WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(RecentTacosController.class).getTacoById3(taco.getId())).withRel("self");		    
+		tacos.web.api.Taco apiTaco = new tacos.web.api.Taco(taco);
+		apiTaco.add(link);
+		tacosList.add(apiTaco);
+	}
+	return new ResponseEntity<>(CollectionModel.of(tacosList), HttpStatus.OK);
+}
+```
+
+​	测试：
+
+<img src="screenshot\74-restapi.png" style="zoom:60%;" />
+
+​	这里还有点小问题囧。。。明明调用 `getTacoById3()` 返回的超链接是有带 api 前缀的，但是在 中通过 `*methodOn()`  反射调用得到的链接反而没有，知道的大佬指导一下o(╥﹏╥)o。
 
 
 
-
-
-
-
+【演示项目github地址】https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-rest
 
 
 
@@ -4640,6 +5190,30 @@ public User user() {
 
 
 ## @RequestMapping
+
+
+
+
+
+## @GetMapping
+
+
+
+## @PutMapping
+
+
+
+## @PutMapping
+
+
+
+## @PatchMapping
+
+
+
+## @DeleteMapping
+
+
 
 
 
