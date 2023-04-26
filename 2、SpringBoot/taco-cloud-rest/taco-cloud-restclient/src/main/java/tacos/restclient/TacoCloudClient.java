@@ -36,7 +36,9 @@ public class TacoCloudClient {
 	}
 	
 	
-	// Get Example
+	/**
+	 * Get Example
+	 */
 	
 	// 将参数指定为可变参数
 	public Ingredient getIngredientById(String ingredientId) {
@@ -63,25 +65,34 @@ public class TacoCloudClient {
 	public Ingredient getIngredientById2(String ingredientId) {
 		Map<String, String> urlVariables = new HashMap<>();
 		urlVariables.put("id", ingredientId);
+		return rest.getForObject("http://localhost:8080/api/ingredients/{id}",
+   				 				 Ingredient.class, 
+   				 				 urlVariables);
+	}	
+	
+	// 使用URL参数、Map传参
+	public Ingredient getIngredientById3(String ingredientId) {
+		Map<String, String> urlVariables = new HashMap<>();
+		urlVariables.put("id", ingredientId);
 		URI url = UriComponentsBuilder.fromHttpUrl("http://localhost:8080/api/ingredients/{id}")
 				                      .build(urlVariables);
 		return rest.getForObject(url, Ingredient.class);
 	}
 	
-	/**
-	 * 使用getForEntity返回的是一个ResponseEntity对象，可以获取响应细节比如响应头信息
-	 */
-	public Ingredient getIngredientById3(String ingredientId) {
+	// 使用getForEntity返回的是一个ResponseEntity对象，可以获取响应细节比如响应头信息
+	public Ingredient getIngredientById4(String ingredientId) {
 		ResponseEntity<Ingredient> responseEntity = rest.getForEntity("http://localhost:8080/api/ingredients/{id}",
 				 													  Ingredient.class, 
 				 													  ingredientId);
-		
+				
 		log.info("Fetched time: " + responseEntity.getHeaders().getDate());
+		log.info("Response header: " + responseEntity.getHeaders());
+		log.info("Response status: " + responseEntity.getStatusCode());
 		
 		return responseEntity.getBody();
 	}	
 	
-	public Ingredient getIngredientById4(String ingredientId) {
+	public Ingredient getIngredientById5(String ingredientId) {
 		Map<String, String> urlVariables = new HashMap<>();
 		urlVariables.put("id", ingredientId);
 		URI url = UriComponentsBuilder.fromHttpUrl("http://localhost:8080/api/ingredients/{id}")
@@ -89,6 +100,8 @@ public class TacoCloudClient {
 		ResponseEntity<Ingredient> responseEntity = rest.getForEntity(url, Ingredient.class);
 		
 		log.info("Fetched time: " + responseEntity.getHeaders().getDate());
+		log.info("Response header: " + responseEntity.getHeaders());
+		log.info("Response status: " + responseEntity.getStatusCode());
 		
 		return responseEntity.getBody();
 	}		
@@ -107,12 +120,15 @@ public class TacoCloudClient {
 	}	
 	
 	public void updateOrder(Order order) {
-		rest.put("http://localhost:8080/apiorders/{id}", 
+		rest.put("http://localhost:8080/api/orders/{id}", 
 				  order, 
 			      order.getId());			
 	}
 	
-	// Put Example
+	/**
+	 * Put Example
+	 */
+	
 	public void updateIngredient(Ingredient ingredient) {		
 		rest.put("http://localhost:8080/api/ingredients/{id}", 
 				 ingredient, 
@@ -127,17 +143,14 @@ public class TacoCloudClient {
 				 urlVariables);
 	}	
 	
-	public void updateIngredient3(tacos.restclient.Ingredient ingredient) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-        headers.add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36");
-        HttpEntity<String> entity = new HttpEntity<String>("parameters", headers);        
+	public void updateIngredient3(Ingredient ingredient) {   
+        HttpEntity<Ingredient> entity = new HttpEntity<Ingredient>(ingredient);
 		rest.exchange("http://localhost:8080/api/ingredients/{id}", 
 					  HttpMethod.PUT, 
 					  entity, 
-					  tacos.restclient.Ingredient.class,
+					  Ingredient.class,
 					  ingredient.getId());
-	}	
+	}		
 	
 	
 	// Delete Example
@@ -161,15 +174,18 @@ public class TacoCloudClient {
 	}	
 	
 	public Ingredient createIngredient3(Ingredient ingredient) {
-		ResponseEntity<Ingredient> responseEntity = rest.postForEntity("http://localhost:8080/api/ingredients/{id}",
+		ResponseEntity<Ingredient> responseEntity = rest.postForEntity("http://localhost:8080/api/ingredients",
 																	   ingredient, 
-																	   Ingredient.class);
-		
-		log.info("New resource created at " + responseEntity.getHeaders().getLocation());
-		
+																	   Ingredient.class);		
+		log.info("New resource created at " + responseEntity.getHeaders().getLocation());		
 		return responseEntity.getBody();
 	}	
 	
+	
+	public void retrieveHeaders() {
+		HttpHeaders httpHeaders = rest.headForHeaders("http://localhost:8080/api/ingredients");
+		log.info("Headers : " + httpHeaders);
+	}
 	
 	//
 	// Traverson with RestTemplate examples

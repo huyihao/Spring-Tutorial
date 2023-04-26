@@ -1,4 +1,4 @@
-# 一、从一个SpringBoot小程序开始
+# lo一、从一个SpringBoot小程序开始
 
 ## 1、工具环境安装
 
@@ -5059,17 +5059,248 @@ public ResponseEntity<CollectionModel<tacos.web.api.Taco>> getRecentTacos3() {
 
 
 
+
+
+## 5、Spring RestTemplate
+
+​	客户端与 Rest 资源交互涉及很多工作，通常都是单调的模板代码。如果使用较低层级的 HTTP 库，客户端就需要创建一个客户端实例和请求对象、执行请求、解析响应、将响应映射为领域对象，并且还要处理这个过程中可能会抛出的所有异常。
+
+​	Spring 提供了 RestTemplate 来避免样板代码，就像 JdbcTemplate 一样。
+
+### （1）用法
+
+​	RestTemplate 拥有很多操作方法，主要分为以下几种形式：
+| 形式                    | 含义                                       |
+| --------------------- | ---------------------------------------- |
+| **...ForEntity()**    | 发送一个 GET 或 POST 请求，返回的 ResponseEntity 包含了由响应体所映射成的对象，有 **getForEntity()、postForEntity()** |
+| **...ForObject()**    | 发送一个 GET、POST 或 PATCH 请求，返回的响应体将映射为一个对象，支持方法有：**getForObject()、postForObject()、patchForObject()** |
+| **postForLocation()** | POST 数据到一个 URL，返回一个新创建资源的 URL            |
+| **put()**             | PUT 资源到特定的 URL，主要用于更新数据                  |
+| **execute()**         | 在 URL 上执行特定的HTTP方法，返回一个从响应体映射得到的对象       |
+| **exchange()**        | 在 URL 上执行特定的HTTP方法，返回一个包含了由响应体所映射成的ResponseEntity 对象 |
+
+
+
+### （2）获取资源
+
+#### Ⅰ、获取 POJO
+
+```java
+RestTemplate rest = new RestTemplate();
+
+// 1、使用URL占位变量，并指定 POJO 类型和传参
+public Ingredient getIngredientById(String ingredientId) {
+	/**
+	 * "http://localhost:8080/ingredients/{id}": 要被调用的接口
+	 * Ingredient.class: 调用接口返回JSON要被反序列化为的对象类型
+	 * ingredientId: 传入接口的参数
+	 */
+	try {
+		return rest.getForObject("http://localhost:8080/api/ingredients/{id}",
+			                    Ingredient.class, 
+			 				   ingredientId);		
+	} catch (HttpClientErrorException e) {
+		if (e.getRawStatusCode() == 404) {
+			log.info("there not exists ingredient(" + ingredientId + ")");
+		}
+	} catch (Exception e) {
+		e.printStackTrace();			
+	}
+	return null;
+}
+
+// 2、使用URL占位变量，并指定 POJO 类型和传入Map参数
+public Ingredient getIngredientById2(String ingredientId) {
+	Map<String, String> urlVariables = new HashMap<>();
+	urlVariables.put("id", ingredientId);
+	return rest.getForObject("http://localhost:8080/api/ingredients/{id}",
+							 Ingredient.class, 
+							 urlVariables);
+}	
+
+// 3、使用 URI 参数
+public Ingredient getIngredientById3(String ingredientId) {
+	Map<String, String> urlVariables = new HashMap<>();
+	urlVariables.put("id", ingredientId);
+	URI url = UriComponentsBuilder.fromHttpUrl("http://localhost:8080/api/ingredients/{id}")
+							    .build(urlVariables);
+	return rest.getForObject(url, Ingredient.class);
+}
+
+// 4、获取ResponseEntity对象，得到响应细节，并提取POJO
+public Ingredient getIngredientById4(String ingredientId) {
+	ResponseEntity<Ingredient> responseEntity = 
+      		rest.getForEntity("http://localhost:8080/api/ingredients/{id}",
+							Ingredient.class, 
+							ingredientId);			
+	log.info("Fetched time: " + responseEntity.getHeaders().getDate());
+	log.info("Response header: " + responseEntity.getHeaders());
+	log.info("Response status: " + responseEntity.getStatusCode());	
+	return responseEntity.getBody();
+}	
+
+// 5、使用 URI 参数并获取 ResponseEntity
+public Ingredient getIngredientById5(String ingredientId) {
+	Map<String, String> urlVariables = new HashMap<>();
+	urlVariables.put("id", ingredientId);
+	URI url = UriComponentsBuilder.fromHttpUrl("http://localhost:8080/api/ingredients/{id}")
+							    .build(urlVariables);
+	ResponseEntity<Ingredient> responseEntity = rest.getForEntity(url, Ingredient.class);
+	log.info("Fetched time: " + responseEntity.getHeaders().getDate());
+	log.info("Response header: " + responseEntity.getHeaders());
+	log.info("Response status: " + responseEntity.getStatusCode());
+	return responseEntity.getBody();
+}	
+
+// 6、查询获取数据列表
+public List<Ingredient> getAllIngredients() {
+	return rest.exchange("http://localhost:8080/ingredients", 
+						HttpMethod.GET, 
+						null,
+						new ParameterizedTypeReference<List<Ingredient>>() {})
+      		  .getBody();
+}
+```
+
+
+
+#### Ⅱ、获取 JSON
+
+```java
+RestTemplate restTemplate = new RestTemplate();
+ResponseEntity<String> response
+  = restTemplate.getForEntity("http://localhost:8080/ingredients/{id}", 
+                              String.class,
+                              ingredientId);
+String json = response.getBody();
+```
+
+
+
+#### Ⅲ、获取 Header
+
+```java
+public void retrieveHeaders() {
+	HttpHeaders httpHeaders = rest.headForHeaders("http://localhost:8080/api/ingredients");
+	log.info("Headers : " + httpHeaders);
+}
+```
+
+测试：
+
+```tex
+Headers : [Vary:"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", Link:"<http://localhost:8080/api/ingredients>;rel="self",<http://localhost:8080/api/profile/ingredients>;rel="profile"", X-Content-Type-Options:"nosniff", X-XSS-Protection:"1; mode=block", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"SAMEORIGIN", Date:"Wed, 26 Apr 2023 08:03:22 GMT", Keep-Alive:"timeout=60", Connection:"keep-alive"]
+```
+
+
+
+### （3）更新资源
+
+```java
+RestTemplate rest = new RestTemplate();
+// 1、URL 使用占位变量，传入参数
+public void updateIngredient(Ingredient ingredient) {		
+	rest.put("http://localhost:8080/api/ingredients/{id}", 
+			 ingredient, 
+			 ingredient.getId());		
+}
+
+// 2、URL 使用占位变量，传入Map参数
+public void updateIngredient2(Ingredient ingredient) {
+	Map<String, String> urlVariables = new HashMap<>();
+	urlVariables.put("id", ingredient.getId());
+	rest.put("http://localhost:8080/api/ingredients/{id}", 
+			 ingredient, 
+			 urlVariables);
+}	
+
+// 3、使用exchange()，指定请求方法为 POST
+public void updateIngredient3(Ingredient ingredient) {   
+	HttpEntity<Ingredient> entity = new HttpEntity<Ingredient>(ingredient);
+	rest.exchange("http://localhost:8080/api/ingredients/{id}", 
+				  HttpMethod.PUT, 
+				  entity, 
+				  Ingredient.class,
+				  ingredient.getId());
+}		
+```
+
+
+
+### （4）创建资源
+
+```java
+RestTemplate rest = new RestTemplate();
+
+// 1、使用 postForObject()
+public Ingredient createIngredient(Ingredient ingredient) {
+	return rest.postForObject("http://localhost:8080/api/ingredients", 
+							  ingredient, 
+							  Ingredient.class);
+}
+
+// 2、使用 postForLocation()
+// 返回的URI是从响应的Location头信息派生出来的
+public URI createIngredient2(Ingredient ingredient) {
+	return rest.postForLocation("http://localhost:8080/api/ingredients", 
+							  ingredient, 
+							  Ingredient.class);
+}	
+
+// 3、使用 postForEntity()
+public Ingredient createIngredient3(Ingredient ingredient) {
+	ResponseEntity<Ingredient> responseEntity = 
+      		rest.postForEntity("http://localhost:8080/api/ingredients",
+			   			      ingredient, 
+							 Ingredient.class);		
+	log.info("New resource created at " + responseEntity.getHeaders().getLocation());		
+	return responseEntity.getBody();
+}
+```
+
+
+
+### （5）删除资源
+
+```java
+public void deleteIngredient(Ingredient ingredient) {
+	rest.delete("http://localhost:8080/api/ingredients/{id}", 
+				ingredient.getId());
+}
+```
+
+
+
+### （6）提交表单数据
+
+​	**首先，我们需要将 Content-Type 标头设置为 application/x-www-form-urlencoded。** 这可确保可以将大型查询字符串发送到服务器，其中包含由 & 分隔的键值对。
+
+```java
+HttpHeaders headers = new HttpHeaders();
+headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+// 将表单变量包装到 MultiValueMap 中
+MultiValueMap<String, String> map= new LinkedMultiValueMap<>();
+map.add("id", "1");
+
+// 构建 HttpEntity 请求实例
+HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
+
+// 通过在端点上调用 restTemplate.postForEntity（） 来连接到 REST 服务：/foos/form
+ResponseEntity<String> response = restTemplate.postForEntity(fooResourceUrl+"/form", 
+                                                             request , 
+                                                             String.class);
+Assertions.assertEquals(response.getStatusCode(), HttpStatus.CREATED);
+```
+
+
+
+
+
+
+
+
 【演示项目github地址】https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-rest
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -5538,4 +5769,26 @@ create table taco_user (
 # 在配置中添加
 spring.main.web-application-type=none
 ```
+
+
+
+
+
+## 15、使用 @RepositoryRestController 的注意事项
+
+（1）不能与 @RestController、@RequestMapping 注解共用
+
+（2）控制器中定义的方法前缀必须跟自动生成的 API 前缀相同，比如自动生成的 API 是：
+
+> **http://localhost:8080/api/tacos{?page,size,sort}**
+
+要对 taco 实体定义一个控制器添加自定义端点，方法的 mapping 前缀就必须是 `"/tacos"` ，否则请求响应 404
+
+<img src="screenshot\75-restapi.png" style="zoom:70%;" />
+
+<img src="screenshot\76-restapi.png" style="zoom:70%;" />
+
+<img src="screenshot\77-restapi.png" style="zoom:70%;" />
+
+
 
