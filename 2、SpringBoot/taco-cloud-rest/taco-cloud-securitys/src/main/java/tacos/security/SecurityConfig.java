@@ -86,7 +86,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
          * 
          * h2-console默认禁止页面展示<iframe>标签，设置同源策略即可
          */
-        http.csrf().ignoringAntMatchers("/design/**", "/apiorders/**", "/param/**");        
+        http.csrf().ignoringAntMatchers("/design/**", "/apiorders/**", "/api/**", "/param/**");        
         http.headers().frameOptions().sameOrigin();
 	}	
 	

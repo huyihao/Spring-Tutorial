@@ -1,4 +1,4 @@
-# lo一、从一个SpringBoot小程序开始
+# 一、从一个SpringBoot小程序开始
 
 ## 1、工具环境安装
 
@@ -158,6 +158,8 @@
   * 提供一个 Maven goal，允许通过 Maven 来运行应用；
   * 确保依赖的所有库都会包含在可执行 Jar 文件中，并且保证运行时在类路径下是可用的；
   * 在 Jar 中生成一个 manifest 文件，将引导类声明为可执行 Jar 的主类。
+
+
 
 
 
@@ -873,6 +875,8 @@ public class DesignTacosController {
 
   如果表单校验有错误，则 `errors.hasErrors()` 会返回 false，从而会重新回到设计的页面让客户重选。
 
+  ​
+
 
 
 #### Ⅳ、前端展现错误
@@ -1200,7 +1204,7 @@ https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-c
 
 ​	在数据访问中，访问数据需要先创建一个**数据访问对象（Data Access Object）**，为了面向接口编程，需要定义一个 **DAO 接口**，而 DAO 接口可以有多个不同的 **DAO 实现**， 业务系统中使用的是服务对象，服务对象通过接口来访问 DAO，这样既使得服务对象易于测试，又不再与特定的数据访问实现绑定在一起。
 
-<i#mg src="screenshot\15-DAO.png" style="zoom:60%;" />
+<img src="screenshot\15-DAO.png" style="zoom:60%;" />
 
 ## 1、定义数据对象
 
@@ -2754,6 +2758,8 @@ Using generated security password: 9d05346a-e240-46cc-9c53-87de94f5734d
 
 
 
+
+
 ## 2、配置
 
 ​	需要定义一个 Spring Security 的基础配置类，该安全类要继承 `WebSecurityConfigurerAdapter` 类，并重写 `configure(AuthenticationManagerBuilder auth)` 方法。
@@ -3207,6 +3213,8 @@ public class RegistrationForm {
 ```
 
 ​	转化为 User 对象时，会传入转码器对象，对密码进行转码处理，然后再持久化到数据库中。
+
+
 
 
 
@@ -5055,7 +5063,7 @@ public ResponseEntity<CollectionModel<tacos.web.api.Taco>> getRecentTacos3() {
 
 <img src="screenshot\74-restapi.png" style="zoom:60%;" />
 
-​	这里还有点小问题囧。。。明明调用 `getTacoById3()` 返回的超链接是有带 api 前缀的，但是在 中通过 `*methodOn()`  反射调用得到的链接反而没有，知道的大佬指导一下o(╥﹏╥)o。
+​	这里还有点小问题囧。。。明明调用 `getTacoById3()` 返回的超链接是有带 api 前缀的，但是在 中通过 `methodOn()`  反射调用得到的链接反而没有，知道的大佬指导一下o(╥﹏╥)o。
 
 
 

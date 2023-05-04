@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.client.Traverson;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -22,6 +23,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import lombok.extern.slf4j.Slf4j;
 import tacos.Ingredient;
 import tacos.Order;
+import tacos.Taco;
 
 @Service
 @Slf4j
@@ -190,29 +192,30 @@ public class TacoCloudClient {
 	//
 	// Traverson with RestTemplate examples
 	//
-	/*public Iterable<Ingredient> getAllIngredientsWithTraverson() {		
-		ParameterizedTypeReference<Resources<Ingredient>> ingredientType = new ParameterizedTypeReference<Resources<Ingredient>>() {
+	public Iterable<Ingredient> getAllIngredientsWithTraverson() {		
+		ParameterizedTypeReference<CollectionModel<Ingredient>> ingredientType = new ParameterizedTypeReference<CollectionModel<Ingredient>>() {
 		};
 
-		Resources<Ingredient> ingredientRes = traverson.follow("ingredients").toObject(ingredientType);
+		CollectionModel<Ingredient> ingredientRes = traverson.follow("ingredients").toObject(ingredientType);
+		//Resources<Ingredient> ingredientRes = traverson.follow("ingredients").toObject(ingredientType);
 
 		Collection<Ingredient> ingredients = ingredientRes.getContent();
 
 		return ingredients;
-	}*/
+	}
 	
 	public Ingredient addIngredient(Ingredient ingredient) {
 		String ingredientsUrl = traverson.follow("ingredients").asLink().getHref();
 		return rest.postForObject(ingredientsUrl, ingredient, Ingredient.class);
 	}
 	
-	/*public Iterable<Taco> getRecentTacosWithTraverson() {
-		ParameterizedTypeReference<Resources<Taco>> tacoType = new ParameterizedTypeReference<Resources<Taco>>() {
+	public Iterable<Taco> getRecentTacosWithTraverson() {
+		ParameterizedTypeReference<CollectionModel<Taco>> tacoType = new ParameterizedTypeReference<CollectionModel<Taco>>() {
 		};
 
-		Resources<Taco> tacoRes = traverson.follow("tacos").follow("recents").toObject(tacoType);
+		CollectionModel<Taco> tacoRes = traverson.follow("tacos").follow("recent").toObject(tacoType);
 
 		return tacoRes.getContent();
-	}*/
+	}
 	
 }

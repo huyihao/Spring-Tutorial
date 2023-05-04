@@ -29,9 +29,9 @@ import tacos.data.TacoRepository;
  * @RequestMapping不能同时使用
  *
  */
-@RepositoryRestController
-//@RestController
-//@RequestMapping("/taco")
+//@RepositoryRestController
+@RestController
+@RequestMapping("/taco")
 public class RecentTacosController {
 
 	private TacoRepository tacoRepo;
@@ -131,7 +131,7 @@ public class RecentTacosController {
 	@Value("${spring.data.rest.base-path}")
 	private String apiBasePath;
 	
-	@GetMapping(path = "/tacos/{tacoId}", produces = "application/hal+json")
+	//@GetMapping(path = "/tacos/{tacoId}", produces = "application/hal+json")
 	public ResponseEntity<tacos.web.api.Taco> getTacoById3(@PathVariable Long tacoId) {
 		Optional<Taco> taco = tacoRepo.findById(tacoId);
 		tacos.web.api.Taco tacoModel = new tacos.web.api.Taco(taco.get());
@@ -142,15 +142,12 @@ public class RecentTacosController {
 	    return new ResponseEntity<>(tacoModel, HttpStatus.OK);
 	}
 	
-	@GetMapping(path = "/tacos/recent", produces = "application/hal+json")
+	//@GetMapping(path = "/tacos/recent", produces = "application/hal+json")
 	public ResponseEntity<CollectionModel<tacos.web.api.Taco>> getRecentTacos3() {
 		PageRequest page = PageRequest.of(0, 12, Sort.by("createdAt").descending());
 		List<Taco> tacos = tacoRepo.findAll(page).getContent();
 		List<tacos.web.api.Taco> tacosList = new ArrayList<>();
 		for (Taco taco : tacos) {
-//		    Link link = WebMvcLinkBuilder.linkTo(RecentTacosController.class)
-//										 .slash(taco.getId())
-//										 .withRel("self");
 		    Link link = WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(RecentTacosController.class).getTacoById3(taco.getId())).withRel("self");		    
 		    tacos.web.api.Taco apiTaco = new tacos.web.api.Taco(taco);
 		    apiTaco.add(link);
@@ -158,4 +155,6 @@ public class RecentTacosController {
 		}
 		return new ResponseEntity<>(CollectionModel.of(tacosList), HttpStatus.OK);
 	}	
+	
+	
 }

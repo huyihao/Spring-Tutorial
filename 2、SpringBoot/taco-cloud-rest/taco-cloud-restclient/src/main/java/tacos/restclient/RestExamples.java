@@ -15,6 +15,7 @@ import org.springframework.web.client.RestTemplate;
 import lombok.extern.slf4j.Slf4j;
 import tacos.Ingredient;
 import tacos.Order;
+import tacos.Taco;
 
 @SpringBootConfiguration
 @ComponentScan
@@ -112,7 +113,7 @@ public class RestExamples {
 	}	
 	
 	// 获取并更新一条配料数据
-	@Bean
+	//@Bean
 	public CommandLineRunner putAnIngredient(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- PUT -------------------------");
@@ -125,7 +126,7 @@ public class RestExamples {
 		};
 	}
 	
-	@Bean
+	//@Bean
 	public CommandLineRunner putAnIngredient2(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- PUT -------------------------");
@@ -138,7 +139,7 @@ public class RestExamples {
 		};
 	}	
 	
-	@Bean
+	//@Bean
 	public CommandLineRunner putAnIngredient3(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- PUT(Call exchange) -------------------------");
@@ -152,7 +153,7 @@ public class RestExamples {
 	}		
 	
 	// 删除一条配料数据
-	@Bean
+	//@Bean
 	public CommandLineRunner deleteAnIngredient(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- DELETE -------------------------");
@@ -183,7 +184,7 @@ public class RestExamples {
 	}	
 	
 	// 添加一条配料数据
-	@Bean
+	//@Bean
 	public CommandLineRunner addAnIngredient(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- POST -------------------------");
@@ -194,7 +195,7 @@ public class RestExamples {
 		};
 	}
 	
-	@Bean
+	//@Bean
 	public CommandLineRunner addAnIngredient2(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- POST(RETURN URI) -------------------------");
@@ -205,7 +206,7 @@ public class RestExamples {
 		};
 	}	
 	
-	@Bean
+	//@Bean
 	public CommandLineRunner addAnIngredient3(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- POST(RETURN ResponseEntity) -------------------------");
@@ -250,7 +251,7 @@ public class RestExamples {
 		};
 	}
 	
-	@Bean
+	//@Bean
 	public CommandLineRunner putOrder(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- PUT(GET -> UPDATE -> GET) -------------------------");
@@ -266,11 +267,12 @@ public class RestExamples {
 		};
 	}
 	
-	@Bean
+	//@Bean
 	public CommandLineRunner headers(TacoCloudClient tacoCloudClient) {
 		return args -> {
 			log.info("----------------------- Headers -------------------------");
 			tacoCloudClient.retrieveHeaders();
+			log.info("");
 		};
 	}
 	
@@ -284,19 +286,20 @@ public class RestExamples {
 		return traverson;
 	}
 	
-//	@Bean
-//	public CommandLineRunner traversonGetIngredients(TacoCloudClient tacoCloudClient) {
-//		return args -> {
-//			Iterable<Ingredient> ingredients = tacoCloudClient.getAllIngredientsWithTraverson();
-//			log.info("----------------------- GET INGREDIENTS WITH TRAVERSON -------------------------");
-//			for (Ingredient ingredient : ingredients) {
-//				log.info("   -  " + ingredient);
-//			}
-//		};
-//	}
+	//@Bean
+	public CommandLineRunner traversonGetIngredients(TacoCloudClient tacoCloudClient) {
+		return args -> {
+			Iterable<Ingredient> ingredients = tacoCloudClient.getAllIngredientsWithTraverson();
+			log.info("----------------------- GET INGREDIENTS WITH TRAVERSON -------------------------");
+			for (Ingredient ingredient : ingredients) {
+				log.info("   -  " + ingredient);
+			}
+		};
+	}
 	
 	//@Bean
 	public CommandLineRunner traversonSaveIngredient(TacoCloudClient tacoCloudClient) {
+		
 		return args -> {
 			Ingredient pico = tacoCloudClient
 					.addIngredient(new Ingredient("PICO", "Pico de Gallo", Ingredient.Type.SAUCE));
@@ -306,18 +309,20 @@ public class RestExamples {
 				log.info("   -  " + ingredient);
 			}
 			tacoCloudClient.deleteIngredient(pico);
+			log.info("");
 		};
 	}
 
-//	@Bean
-//	public CommandLineRunner traversonRecentTacos(TacoCloudClient tacoCloudClient) {
-//		return args -> {
-//			Iterable<Taco> recentTacos = tacoCloudClient.getRecentTacosWithTraverson();
-//			log.info("----------------------- GET RECENT TACOS WITH TRAVERSON -------------------------");
-//			for (Taco taco : recentTacos) {
-//				log.info("   -  " + taco);
-//			}
-//		};
-//	}
+	//@Bean
+	public CommandLineRunner traversonRecentTacos(TacoCloudClient tacoCloudClient) {
+		return args -> {
+			Iterable<Taco> recentTacos = tacoCloudClient.getRecentTacosWithTraverson();
+			log.info("----------------------- GET RECENT TACOS WITH TRAVERSON -------------------------");
+			for (Taco taco : recentTacos) {
+				log.info("   -  " + taco);
+			}
+			log.info("");
+		};
+	}
 	
 }

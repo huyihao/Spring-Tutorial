@@ -32,7 +32,7 @@ spring:
       
 logging:
   level:
-    '[org.hibernate]': DEBUG 
+    '[org.hibernate]': INFO
     '[org.springframework.web]': DEBUG 
     
     
