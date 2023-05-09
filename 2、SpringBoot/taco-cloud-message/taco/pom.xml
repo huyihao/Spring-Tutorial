@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>sia</groupId>
+		<artifactId>taco-cloud-message</artifactId>
+		<version>0.0.8-SNAPSHOT</version>
+	</parent>
+	
+	<artifactId>taco</artifactId>	
+	<packaging>jar</packaging>
+	<name>taco</name>
+	<description>Taco Cloud Message Example</description>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>1.8</java.version>
+	</properties>	
+
+
+	<dependencies>
+		<!-- Taco Dependency -->
+		<dependency>
+			<groupId>sia</groupId>
+			<artifactId>taco-cloud-web</artifactId>
+			<version>${tacocloud.version}</version>
+		</dependency>	
+		<dependency>
+			<groupId>sia</groupId>
+			<artifactId>taco-cloud-domain</artifactId>
+			<version>${tacocloud.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>sia</groupId>
+			<artifactId>taco-cloud-data</artifactId>
+			<version>${tacocloud.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>sia</groupId>
+			<artifactId>taco-cloud-api</artifactId>
+			<version>${tacocloud.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>sia</groupId>
+			<artifactId>taco-cloud-security</artifactId>
+			<version>${tacocloud.version}</version>
+		</dependency>			
+		<!--dependency>
+			<groupId>sia</groupId>
+			<artifactId>taco-cloud-messaging-jms</artifactId>
+			<version>${tacocloud.version}</version>
+		</dependency-->		
+		<!--dependency>
+			<groupId>sia</groupId>
+			<artifactId>taco-cloud-messaging-rabbitmq</artifactId>
+			<version>${tacocloud.version}</version>
+		</dependency-->		
+		<dependency>
+			<groupId>sia</groupId>
+			<artifactId>taco-cloud-messaging-kafka</artifactId>
+			<version>${tacocloud.version}</version>
+		</dependency>												
+		
+		<!-- Spring Boot Starter -->		
+		
+		<!-- Actuator and DevTools...just because -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>		
+		
+		<!-- Test -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>		
+	</dependencies>
+	
+	<build>
+		<resources>
+		      <resource>
+		          <directory>src/main/resources</directory>
+		          <includes>
+		              <include>**/*.properties</include>
+		              <!-- 配置一下yml文件 -->
+		              <include>**/*.yml</include>
+		          </includes>
+		          <filtering>false</filtering>
+		      </resource>
+		</resources> 		
+	</build>
+
+</project>

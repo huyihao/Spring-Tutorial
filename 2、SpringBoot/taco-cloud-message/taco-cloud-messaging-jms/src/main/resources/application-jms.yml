@@ -1,0 +1,13 @@
+spring:
+  artemis:
+    broker-url: tcp://localhost:61616
+    user: activemq
+    password: activemq
+    
+  jms:
+    template:
+      default-destination: tacocloud.order.queue
+ 
+  # 表示不是web项目，如果web项目引用了本工程，则本属性需要被注释
+  #main:
+  #  web-application-type: none
