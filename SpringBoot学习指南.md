@@ -6338,9 +6338,9 @@ ListenableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp
 * 时间戳（可选；默认为 System.currentTimeMillis()）
 * payload（必须）
 
-​	topic 和 payload 是两个最重要的参数。分区和键对如何使用 KafkaTemplate 几乎没有影响，除了作为 send() 和 sendDefault() 的参数用于提供额外信息。出于我们的目的，我们将把重点放在将消息有效负载发送到给定主题上，而不考虑分区和键。
+  ​topic 和 payload 是两个最重要的参数。分区和键对如何使用 KafkaTemplate 几乎没有影响，除了作为 send() 和 sendDefault() 的参数用于提供额外信息。出于我们的目的，我们将把重点放在将消息有效负载发送到给定主题上，而不考虑分区和键。
 
-​	对于 send() 方法，还可以选择发送一个 ProducerRecord，它与在单个对象中捕获所有上述参数的类型差不多。也可以发送 Message 对象，但是这样做需要将域对象转换为 Message。通常，使用其他方法比创建和发送 ProducerRecord 或 Message 对象更容易。
+  ​对于 send() 方法，还可以选择发送一个 ProducerRecord，它与在单个对象中捕获所有上述参数的类型差不多。也可以发送 Message 对象，但是这样做需要将域对象转换为 Message。通常，使用其他方法比创建和发送 ProducerRecord 或 Message 对象更容易。
 
 #### Ⅰ、发送消息
 
@@ -6559,6 +6559,14 @@ spring:
 
 
 【演示项目github地址】https://github.com/huyihao/Spring-Tutorial/tree/main/2%E3%80%81SpringBoot/taco-cloud-message
+
+
+
+
+
+
+
+# 八、Spring Integration
 
 
 
