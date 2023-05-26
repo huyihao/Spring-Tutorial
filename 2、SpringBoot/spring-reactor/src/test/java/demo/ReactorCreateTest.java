@@ -77,6 +77,7 @@ public class ReactorCreateTest {
 	}	
 	
 	// 生成Flux的数据
+	// 某个区间内的整数
 	@Test
 	public void createAFlux_range() {
 	    Flux<Integer> intervalFlux = Flux.range(1, 5);
@@ -89,9 +90,11 @@ public class ReactorCreateTest {
 			        .verifyComplete();
 	}	
 	
+	// 带时间间隔的数据发布
 	@Test
 	public void createAFlux_interval() {
 	    Flux<Long> intervalFlux = Flux.interval(Duration.ofSeconds(1)).take(5);
+	    intervalFlux.subscribe(i -> System.out.println("intervalFlux:" + i));
 	    StepVerifier.create(intervalFlux)
 			        .expectNext(0L)
 			        .expectNext(1L)

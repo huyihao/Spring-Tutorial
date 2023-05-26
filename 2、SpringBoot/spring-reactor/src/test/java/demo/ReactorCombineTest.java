@@ -81,7 +81,7 @@ public class ReactorCombineTest {
 	        .verifyComplete();
 	}	
 	
-	// 选择第一个反应式类型进行发布
+	// 选择第一个流出数据的反应式类型进行发布
 	@Test
 	public void firstFlux() {
 	    Flux<String> slowFlux = Flux.just("tortoise", "snail", "sloth")

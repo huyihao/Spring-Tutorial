@@ -134,7 +134,7 @@ public class ReactorConvertAndFilterTest {
 	 * 
 	 */
 	/**
-	 * Map操作
+	 * Map操作 将发布的数据转化为其他数据类型
 	 */
 	@Test
 	public void map() {
