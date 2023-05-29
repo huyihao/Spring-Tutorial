@@ -1,5 +1,7 @@
 package life.majiang.community.controller;
 
+import life.majiang.community.mapper.UserMapper;
+import life.majiang.community.model.User;
 import life.majiang.community.provider.GithubProvider;
 import life.majiang.community.provider.dto.AccessTokenDTO;
 import life.majiang.community.provider.dto.GithubUser;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.UUID;
 
 /**
  * Github OAuth登录回调
@@ -31,6 +34,9 @@ public class AuthorizeController {
     @Value("${github.redirect.uri}")
     private String redirectUri;
 
+    @Autowired
+    private UserMapper userMapper;
+
     /**
      * Github OAuth登录成功后会回调到这里，并且把获得的授权码code和初始化请求上送的state返回
       */
@@ -44,11 +50,18 @@ public class AuthorizeController {
         accessTokenDTO.setRedirect_uri(redirectUri);
         accessTokenDTO.setCode(code);
         String accessToken = githubProvider.getAccessToken(accessTokenDTO);
-        GithubUser user = githubProvider.getGithubUser(accessToken);
-        log.info("user: " + user);
-        if (user != null) {
+        GithubUser githubUser = githubProvider.getGithubUser(accessToken);
+        log.info("user: " + githubUser);
+        if (githubUser != null) {
             // 登录成功，写cookie、session
-            request.getSession().setAttribute("user", user);
+            User user = new User();
+            user.setAccountId(String.valueOf(githubUser.getId()));
+            user.setName(githubUser.getName());
+            user.setToken(UUID.randomUUID().toString());
+            user.setGmtCreate(System.currentTimeMillis());
+            user.setGmtModified(user.getGmtCreate());
+            userMapper.insert(user);
+            request.getSession().setAttribute("user", githubUser);
             return "redirect:/";
         } else {
             // 登录失败，重新登录
