@@ -47,7 +47,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- H2 DB -->
+        <!-- H2 DB(必须和IDEA Database插件中创建的H2数据库驱动版本一致，否则会报错) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
