@@ -1,0 +1,1 @@
+alter table CUSER add BIO VARCHAR(256) NULL;
