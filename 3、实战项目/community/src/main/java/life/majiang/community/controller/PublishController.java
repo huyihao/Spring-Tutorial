@@ -4,18 +4,22 @@ import life.majiang.community.mapper.QuestionMapper;
 import life.majiang.community.mapper.UserMapper;
 import life.majiang.community.model.Question;
 import life.majiang.community.model.User;
+import life.majiang.community.utils.LoginUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
-@Controller("/publish")
+@Controller
+@RequestMapping("/publish")
 public class PublishController {
 
     @Autowired
@@ -24,8 +28,13 @@ public class PublishController {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private LoginUtils loginUtils;
+
     @GetMapping
-    public String publish() {
+    public String publish(HttpServletRequest request) {
+        loginUtils.userSessionInit(request);
+
         return "publish";
     }
 
@@ -35,6 +44,11 @@ public class PublishController {
                             @RequestParam(value = "tag") String tag,
                             HttpServletRequest request,
                             Model model) {
+        // 方便页面回显，这样页面已经填了的信息不用再重填一次
+        model.addAttribute("title", title);
+        model.addAttribute("description", description);
+        model.addAttribute("tag", tag);
+
         if (StringUtils.isEmpty(title)) {
             model.addAttribute("error", "标题不能为空");
             return "publish";

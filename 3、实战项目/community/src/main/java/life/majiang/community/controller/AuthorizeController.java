@@ -55,19 +55,32 @@ public class AuthorizeController {
         String accessToken = githubProvider.getAccessToken(accessTokenDTO);
         GithubUser githubUser = githubProvider.getGithubUser(accessToken);
         log.info("user: " + githubUser);
-        if (githubUser != null) {
-            // 登录成功，写cookie、session
-            User user = new User();
-            user.setAccountId(String.valueOf(githubUser.getId()));
-            user.setName(githubUser.getName());
-            String token = UUID.randomUUID().toString();
-            user.setToken(token);
-            user.setGmtCreate(System.currentTimeMillis());
-            user.setGmtModified(user.getGmtCreate());
-            user.setBio(githubUser.getBio());
-            userMapper.insert(user);
+        /**
+         * 1、某些情况下返回响应为空，此时githubUser为空
+         * 2、某些情况下返回响应非空，但报文不是对应用户信息的json，此时githubUser的属性值为空
+         */
+        if (githubUser != null && githubUser.getId() != null) {
+            User user = null;
+
+            // 登录成功，先判断该用户是否已在本系统登录过了，登陆过会有记录
+            user = userMapper.selectByAccountId(githubUser.getId());
+
+            // 登录成功，且该用户尚未在本系统中登录过，则在表中插入一条记录
+            if (user == null) {
+                user = new User();
+                user.setAccountId(String.valueOf(githubUser.getId()));
+                user.setName(githubUser.getName());
+                String token = UUID.randomUUID().toString();
+                user.setToken(token);
+                user.setGmtCreate(System.currentTimeMillis());
+                user.setGmtModified(user.getGmtCreate());
+                user.setBio(githubUser.getBio());
+                userMapper.insert(user);
+            }
+
+            // 写cookie、session
             //request.getSession().setAttribute("user", githubUser);
-            response.addCookie(new Cookie("token", token));
+            response.addCookie(new Cookie("token", user.getToken()));
             return "redirect:/";
         } else {
             // 登录失败，重新登录
