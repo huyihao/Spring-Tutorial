@@ -27,6 +27,9 @@ public class IndexController {
 
         List<QuestionDTO> questionDTOList = questionService.list();
         model.addAttribute("questions", questionDTOList);
+        for (QuestionDTO questionDTO : questionDTOList) {
+            questionDTO.setDescription("Test Devtools restart 嘿嘿嘿");
+        }
         return "index";
     }
 
