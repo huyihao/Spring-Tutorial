@@ -1,5 +1,6 @@
 package life.majiang.community.controller;
 
+import life.majiang.community.dto.PaginationDTO;
 import life.majiang.community.dto.QuestionDTO;
 import life.majiang.community.service.QuestionService;
 import life.majiang.community.utils.LoginUtils;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -22,14 +24,13 @@ public class IndexController {
 
     @GetMapping("/")
     public String index(HttpServletRequest request,
-                        Model model) {
+                        Model model,
+                        @RequestParam(name = "page", defaultValue = "1") Integer page,
+                        @RequestParam(name = "size", defaultValue = "2") Integer size) {
         loginUtils.userSessionInit(request);
 
-        List<QuestionDTO> questionDTOList = questionService.list();
-        model.addAttribute("questions", questionDTOList);
-        for (QuestionDTO questionDTO : questionDTOList) {
-            questionDTO.setDescription("Test Devtools restart 嘿嘿嘿");
-        }
+        PaginationDTO paginationDTO = questionService.list(page, size);
+        model.addAttribute("pagination", paginationDTO);
         return "index";
     }
 

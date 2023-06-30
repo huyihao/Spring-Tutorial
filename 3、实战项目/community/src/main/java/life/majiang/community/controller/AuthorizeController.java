@@ -18,7 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.UUID;
 
 /**
- * Github OAuth登录回调
+ * Github OAuth登录回调.
  */
 @Controller
 @Slf4j

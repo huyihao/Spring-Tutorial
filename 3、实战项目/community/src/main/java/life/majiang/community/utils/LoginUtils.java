@@ -24,6 +24,9 @@ public class LoginUtils {
 
         // 若用户未记录会话，则尝试根据cookies中记录的token查表并记录session
         Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return ;
+        }
 
         for (Cookie cookie : cookies) {
             if (cookie.getName().equals("token")) {

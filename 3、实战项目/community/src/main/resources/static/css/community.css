@@ -17,3 +17,7 @@ body {
 .media-object {
     width: 64px;
 }
+.comm-pagination {
+    float: right;
+    padding-right: 50px;
+}
