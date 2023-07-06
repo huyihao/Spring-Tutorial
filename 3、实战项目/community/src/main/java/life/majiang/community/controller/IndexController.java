@@ -23,11 +23,9 @@ public class IndexController {
     private QuestionService questionService;
 
     @GetMapping("/")
-    public String index(HttpServletRequest request,
-                        Model model,
+    public String index(Model model,
                         @RequestParam(name = "page", defaultValue = "1") Integer page,
                         @RequestParam(name = "size", defaultValue = "2") Integer size) {
-        loginUtils.userSessionInit(request);
 
         PaginationDTO paginationDTO = questionService.list(page, size);
         model.addAttribute("pagination", paginationDTO);

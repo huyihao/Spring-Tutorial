@@ -62,26 +62,14 @@ public class PublishController {
             return "publish";
         }
 
-        Cookie[] cookies = request.getCookies();
-        User user = null;
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if (cookie.getName().equals("token")) {
-                    String token = cookie.getValue();
-                    user = userMapper.selectByToken(token);
-                    if (user != null) {
-                        request.getSession().setAttribute("user", user);
-                    }
-                }
-            }
-        }
 
         // 如果cookie中不存在token，或根据token查无用户，则返回报错
-        if (user == null) {
+        if (request.getSession() == null || request.getSession().getAttribute("user") == null) {
             model.addAttribute("error", "用户未登录");
             return "publish";
         }
 
+        User user = (User) request.getSession().getAttribute("user");
         // 记录提交问题带数据库
         Question question = new Question();
         question.setTitle(title);

@@ -27,7 +27,6 @@ public class ProfileController {
                           Model model,
                           @RequestParam(name = "page", defaultValue = "1") Integer page,
                           @RequestParam(name = "size", defaultValue = "2") Integer size) {
-        loginUtils.userSessionInit(request);
         if (request.getSession() == null || request.getSession().getAttribute("user") == null) {
             return "redirect:/";
         }
