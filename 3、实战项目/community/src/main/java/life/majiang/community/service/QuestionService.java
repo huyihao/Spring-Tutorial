@@ -42,4 +42,24 @@ public class QuestionService {
         }
         return paginationDTO;
     }
+
+    public PaginationDTO list(User user, Integer page, Integer size) {
+        // 计算分页获取数据的偏移量
+        Integer offset = size * (page - 1);
+        List<Question> questions = questionMapper.listByUserId(user.getId(), offset, size);
+        List<QuestionDTO> questionDTOList = new ArrayList<>();
+
+        // 查询数据表总共有多少条数据
+        Integer totalCount = questionMapper.countByUserId(user.getId());
+        PaginationDTO paginationDTO = new PaginationDTO();
+        paginationDTO.setPagination(totalCount, page, size);
+        paginationDTO.setQuestions(questionDTOList);
+        for (Question question : questions) {
+            QuestionDTO questionDTO = new QuestionDTO();
+            BeanUtils.copyProperties(question, questionDTO);
+            questionDTO.setUser(user);
+            questionDTOList.add(questionDTO);
+        }
+        return paginationDTO;
+    }
 }
