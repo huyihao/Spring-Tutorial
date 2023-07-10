@@ -5,6 +5,7 @@ import life.majiang.community.model.User;
 import life.majiang.community.provider.GithubProvider;
 import life.majiang.community.provider.dto.AccessTokenDTO;
 import life.majiang.community.provider.dto.GithubUser;
+import life.majiang.community.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +40,9 @@ public class AuthorizeController {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private UserService userService;
+
     /**
      * Github OAuth登录成功后会回调到这里，并且把获得的授权码code和初始化请求上送的state返回
       */
@@ -52,6 +56,8 @@ public class AuthorizeController {
         accessTokenDTO.setClient_secret(clientSecret);
         accessTokenDTO.setRedirect_uri(redirectUri);
         accessTokenDTO.setCode(code);
+        accessTokenDTO.setState(state);
+        log.info("accessTokenDTO: " + accessTokenDTO);
         String accessToken = githubProvider.getAccessToken(accessTokenDTO);
         GithubUser githubUser = githubProvider.getGithubUser(accessToken);
         log.info("user: " + githubUser);
@@ -60,24 +66,18 @@ public class AuthorizeController {
          * 2、某些情况下返回响应非空，但报文不是对应用户信息的json，此时githubUser的属性值为空
          */
         if (githubUser != null && githubUser.getId() != null) {
-            User user = null;
+            User user = new User();
+            user.setAccountId(githubUser.getId());
+            user.setName(githubUser.getName());
+            String token = UUID.randomUUID().toString();
+            user.setToken(token);
+            user.setGmtCreate(System.currentTimeMillis());
+            user.setGmtModified(user.getGmtCreate());
+            user.setBio(githubUser.getBio());
+            user.setAvatarUrl(githubUser.getAvatar_url());
 
-            // 登录成功，先判断该用户是否已在本系统登录过了，登陆过会有记录
-            user = userMapper.selectByAccountId(githubUser.getId());
-
-            // 登录成功，且该用户尚未在本系统中登录过，则在表中插入一条记录
-            if (user == null) {
-                user = new User();
-                user.setAccountId(String.valueOf(githubUser.getId()));
-                user.setName(githubUser.getName());
-                String token = UUID.randomUUID().toString();
-                user.setToken(token);
-                user.setGmtCreate(System.currentTimeMillis());
-                user.setGmtModified(user.getGmtCreate());
-                user.setBio(githubUser.getBio());
-                user.setAvatarUrl(githubUser.getAvatar_url());
-                userMapper.insert(user);
-            }
+            // 插入或更新数据
+            userService.createOrUpdate(user);
 
             // 写cookie、session
             //request.getSession().setAttribute("user", githubUser);
@@ -87,6 +87,18 @@ public class AuthorizeController {
             // 登录失败，重新登录
             return "redirect:/";
         }
+    }
+
+    // 退出登录
+    @GetMapping("/logout")
+    public String logout(HttpServletRequest request,
+                         HttpServletResponse response) {
+        // 清除session和cookie
+        request.getSession().removeAttribute("user");
+        Cookie cookie = new Cookie("token", null);
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+        return "redirect:/";
     }
 
 }
