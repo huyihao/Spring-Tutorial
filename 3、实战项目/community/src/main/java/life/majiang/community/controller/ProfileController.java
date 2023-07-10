@@ -3,7 +3,6 @@ package life.majiang.community.controller;
 import life.majiang.community.dto.PaginationDTO;
 import life.majiang.community.model.User;
 import life.majiang.community.service.QuestionService;
-import life.majiang.community.utils.LoginUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,8 +14,6 @@ import javax.servlet.http.HttpServletRequest;
 
 @Controller
 public class ProfileController {
-    @Autowired
-    private LoginUtils loginUtils;
 
     @Autowired
     private QuestionService questionService;

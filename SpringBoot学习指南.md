@@ -7023,3 +7023,29 @@ spring.main.web-application-type=none
 
 
 
+
+
+## 16、访问静态资源报错 No mapping for GET /css/xx.css
+
+​	在 `WebMvcConfigurer` 接口实现类中添加资源处理器方法：
+
+```java
+@Configuration
+@EnableWebMvc
+public class WebConfig implements WebMvcConfigurer {
+
+    private static final String[] CLASS_RESOURCE_LOACTIONS = {
+            "classpath:/META-INF/resources/",
+            "classpath:/resources/",
+            "classpath:/static/",
+            "classpath:/public/"
+    };
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/**")
+                .addResourceLocations(CLASS_RESOURCE_LOACTIONS);
+    }
+}
+```
+
