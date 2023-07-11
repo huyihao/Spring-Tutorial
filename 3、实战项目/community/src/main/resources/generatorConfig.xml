@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+
+<generatorConfiguration>
+
+    <context id="simple" targetRuntime="MyBatis3">
+        <!-- 配置数据库连接，MBG才知道去连接哪个数据库获取表信息 -->
+        <jdbcConnection driverClass="org.h2.Driver"
+                        connectionURL="jdbc:h2:~/community"
+                        userId="root"
+                        password="root"/>
+
+        <!-- 配置生成的Java Model类要放在哪个目录哪个包中 -->
+        <javaModelGenerator targetPackage="life.majiang.community.model" targetProject="src/main/java"/>
+
+        <!-- 配置生成的mapper.xml存放位置 -->
+        <sqlMapGenerator targetPackage="mapper" targetProject="src/main/resources"/>
+
+        <!-- ava 客户端生成器构建 Java 接口和类，以便轻松使用生成的 Java 模型和 XML 映射文件。 -->
+        <javaClientGenerator type="XMLMAPPER" targetPackage="life.majiang.community.mapper" targetProject="src/main/java"/>
+
+        <!-- 配置要扫描哪些表生成文件 -->
+        <table tableName="cuser" domainObjectName="User"/>
+    </context>
+</generatorConfiguration>
