@@ -12,6 +12,13 @@
                         userId="root"
                         password="root"/>
 
+        <!-- Java 类型解析器用于根据数据库列信息计算 Java 类型。
+             默认的 Java 类型解析器尝试通过在可能的情况下替换整数类型（长整型、整数、短整型等）来使 JDBC DECIMAL 和 NUMERIC 类型更易于使用。
+             如果不希望出现此行为，请将属性“forceBigDecimals”设置为“true”。 -->
+        <javaTypeResolver>
+            <property name="forceBigDecimals" value="true" />
+        </javaTypeResolver>
+
         <!-- 配置生成的Java Model类要放在哪个目录哪个包中 -->
         <javaModelGenerator targetPackage="life.majiang.community.model" targetProject="src/main/java"/>
 

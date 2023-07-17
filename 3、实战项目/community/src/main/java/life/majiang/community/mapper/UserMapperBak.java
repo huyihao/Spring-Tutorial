@@ -3,7 +3,7 @@ package life.majiang.community.mapper;
 import life.majiang.community.model.User;
 import org.apache.ibatis.annotations.*;
 
-@Mapper
+//@Mapper
 public interface UserMapperBak {
     @Insert("insert into cuser (name, account_id, token, gmt_create, gmt_modified, bio, avatar_url) values (#{name}, #{accountId}, #{token}, #{gmtCreate}, #{gmtModified}, #{bio}, #{avatarUrl})")
     void insert(User user);
