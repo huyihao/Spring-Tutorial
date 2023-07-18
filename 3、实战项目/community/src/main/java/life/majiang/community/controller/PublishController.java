@@ -32,12 +32,14 @@ public class PublishController {
     public String doPublish(@RequestParam(value = "title") String title,
                             @RequestParam(value = "description") String description,
                             @RequestParam(value = "tag") String tag,
+                            @RequestParam(value = "id") Long id,
                             HttpServletRequest request,
                             Model model) {
         // 方便页面回显，这样页面已经填了的信息不用再重填一次
         model.addAttribute("title", title);
         model.addAttribute("description", description);
         model.addAttribute("tag", tag);
+        model.addAttribute("id", id);
 
         if (StringUtils.isEmpty(title)) {
             model.addAttribute("error", "标题不能为空");
@@ -62,6 +64,7 @@ public class PublishController {
         User user = (User) request.getSession().getAttribute("user");
         // 记录提交问题带数据库
         Question question = new Question();
+        question.setId(id);
         question.setTitle(title);
         question.setDescription(description);
         question.setGmtCreate(System.currentTimeMillis());
