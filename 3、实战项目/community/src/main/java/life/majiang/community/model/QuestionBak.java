@@ -1,19 +1,19 @@
-package life.majiang.community.dto;
+package life.majiang.community.model;
 
-import life.majiang.community.model.User;
 import lombok.Data;
 
 @Data
-public class QuestionDTO {
-    private Integer id;
+public class QuestionBak {
+
+    private Long id;
     private String title;
     private String description;
     private Long gmtCreate;
     private Long gmtModified;
-    private Integer creator;
+    private Long creator;
     private Integer commentCount;
     private Integer viewCount;
     private Integer likeCount;
     private String tag;
-    private User user;
+
 }

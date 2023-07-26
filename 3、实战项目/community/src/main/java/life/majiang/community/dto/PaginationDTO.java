@@ -23,8 +23,7 @@ public class PaginationDTO {
      * @param size         每页数据条数
      */
     public void setPagination(Integer totalCount, Integer page, Integer size) {
-        this.page = page;
-        // 若数据总数不满整数页则按整数页计算
+        this.page = page;       // 若数据总数不满整数页则按整数页计算
         if (totalCount % size == 0) {
             this.totalPages = totalCount / size;
         } else {

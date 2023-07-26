@@ -32,7 +32,7 @@ public class PublishController {
     public String doPublish(@RequestParam(value = "title") String title,
                             @RequestParam(value = "description") String description,
                             @RequestParam(value = "tag") String tag,
-                            @RequestParam(value = "id") Long id,
+                            @RequestParam(value = "id") Integer id,
                             HttpServletRequest request,
                             Model model) {
         // 方便页面回显，这样页面已经填了的信息不用再重填一次
@@ -69,7 +69,7 @@ public class PublishController {
         question.setDescription(description);
         question.setGmtCreate(System.currentTimeMillis());
         question.setGmtModified(question.getGmtCreate());
-        question.setCreator(Long.valueOf(user.getId()));
+        question.setCreator(user.getId());
         question.setTag(tag);
 
         questionService.createOrUpdate(question);

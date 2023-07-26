@@ -6,6 +6,8 @@
 <generatorConfiguration>
 
     <context id="simple" targetRuntime="MyBatis3">
+        <plugin type="org.mybatis.generator.plugins.RowBoundsPlugin"></plugin>
+        
         <!-- 配置数据库连接，MBG才知道去连接哪个数据库获取表信息 -->
         <jdbcConnection driverClass="org.h2.Driver"
                         connectionURL="jdbc:h2:~/community"
@@ -20,15 +22,23 @@
         </javaTypeResolver>
 
         <!-- 配置生成的Java Model类要放在哪个目录哪个包中 -->
-        <javaModelGenerator targetPackage="life.majiang.community.model" targetProject="src/main/java"/>
+        <javaModelGenerator targetPackage="life.majiang.community.model" targetProject="src/main/java">
+            <property name="enableSubPackages" value="true"/>
+            <property name="trimStrings" value="true"/>
+        </javaModelGenerator>
 
         <!-- 配置生成的mapper.xml存放位置 -->
-        <sqlMapGenerator targetPackage="mapper" targetProject="src/main/resources"/>
+        <sqlMapGenerator targetPackage="mapper" targetProject="src/main/resources">
+            <property name="enableSubPackages" value="true"/>
+        </sqlMapGenerator>
 
         <!-- ava 客户端生成器构建 Java 接口和类，以便轻松使用生成的 Java 模型和 XML 映射文件。 -->
-        <javaClientGenerator type="XMLMAPPER" targetPackage="life.majiang.community.mapper" targetProject="src/main/java"/>
+        <javaClientGenerator type="XMLMAPPER" targetPackage="life.majiang.community.mapper" targetProject="src/main/java">
+            <property name="enableSubPackages" value="true"/>
+        </javaClientGenerator>
 
         <!-- 配置要扫描哪些表生成文件 -->
         <table tableName="cuser" domainObjectName="User"/>
+        <table tableName="question" domainObjectName="Question"/>
     </context>
 </generatorConfiguration>
