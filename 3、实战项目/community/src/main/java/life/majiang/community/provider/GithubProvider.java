@@ -1,6 +1,8 @@
 package life.majiang.community.provider;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.PropertyNamingStrategy;
+import com.alibaba.fastjson.parser.ParserConfig;
 import life.majiang.community.provider.dto.AccessTokenDTO;
 import life.majiang.community.provider.dto.GithubUser;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +28,7 @@ public class GithubProvider {
                 .build();
         try (Response response = client.newCall(request).execute()) {
             String string = response.body().string();
-            log.info("response: " + string);
+            log.info("Get access token response: " + string);
             String token = string.split("&")[0].split("=")[1];
             return token;
         } catch (IOException e) {
@@ -43,10 +45,12 @@ public class GithubProvider {
                                      .build();
         try (Response response = client.newCall(request).execute()) {
             String string = response.body().string();
-            log.info("response: " + string);
+            log.info("Get github user response: " + string);
+            ParserConfig.getGlobalInstance().propertyNamingStrategy = PropertyNamingStrategy.SnakeCase;
             GithubUser githubUser = JSON.parseObject(string, GithubUser.class);
             return githubUser;
         } catch (IOException e) {
+            log.error("Get github user exception: {}", e);
         }
         return null;
     }
