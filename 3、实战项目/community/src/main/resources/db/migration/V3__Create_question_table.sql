@@ -11,4 +11,3 @@ create table question
     like_count    INT DEFAULT 0 COMMENT '点赞数',
     tag           VARCHAR(256) COMMENT '标签'
 );
-

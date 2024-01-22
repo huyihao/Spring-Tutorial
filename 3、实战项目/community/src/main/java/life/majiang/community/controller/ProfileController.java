@@ -16,28 +16,29 @@ import javax.servlet.http.HttpServletRequest;
 public class ProfileController {
 
     @Autowired
-    private QuestionService questionService;
+    QuestionService questionService;
 
     @GetMapping("/profile/{action}")
-    public String profile(@PathVariable(name = "action") String action,
-                          HttpServletRequest request,
+    public String profile(HttpServletRequest request,
                           Model model,
+                          @PathVariable(name = "action") String action,
                           @RequestParam(name = "page", defaultValue = "1") Integer page,
                           @RequestParam(name = "size", defaultValue = "2") Integer size) {
-        if (request.getSession() == null || request.getSession().getAttribute("user") == null) {
+        if (request.getSession() != null && request.getSession().getAttribute("user") == null) {
             return "redirect:/";
         }
+        User user = (User) request.getSession().getAttribute("user");
 
         model.addAttribute("section", action);
         if ("questions".equals(action)) {
-            model.addAttribute("sectionName", "我的提问");
+            model.addAttribute("sectionName", "我的问题");
+
+            PaginationDTO paginationDTO = questionService.list(user.getId(), page, size);
+            model.addAttribute("pagination", paginationDTO);
         } else if ("replies".equals(action)) {
             model.addAttribute("sectionName", "最新回复");
         }
 
-        User user = (User) request.getSession().getAttribute("user");
-        PaginationDTO paginationDTO = questionService.list(user, page, size);
-        model.addAttribute("pagination", paginationDTO);
         return "profile";
     }
 

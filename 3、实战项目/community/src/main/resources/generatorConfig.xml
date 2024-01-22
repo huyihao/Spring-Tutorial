@@ -4,41 +4,51 @@
         "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
 
 <generatorConfiguration>
+    <context id="H2Tables" targetRuntime="MyBatis3">
+        <!-- 支持分页查询的插件 -->
+        <plugin type="org.mybatis.generator.plugins.RowBoundsPlugin"/>
 
-    <context id="simple" targetRuntime="MyBatis3">
-        <plugin type="org.mybatis.generator.plugins.RowBoundsPlugin"></plugin>
-        
-        <!-- 配置数据库连接，MBG才知道去连接哪个数据库获取表信息 -->
+        <!-- 数据库连接 -->
         <jdbcConnection driverClass="org.h2.Driver"
                         connectionURL="jdbc:h2:~/community"
                         userId="root"
-                        password="root"/>
+                        password="root">
+        </jdbcConnection>
 
-        <!-- Java 类型解析器用于根据数据库列信息计算 Java 类型。
-             默认的 Java 类型解析器尝试通过在可能的情况下替换整数类型（长整型、整数、短整型等）来使 JDBC DECIMAL 和 NUMERIC 类型更易于使用。
-             如果不希望出现此行为，请将属性“forceBigDecimals”设置为“true”。 -->
-        <javaTypeResolver>
-            <property name="forceBigDecimals" value="true" />
+        <!-- Java类型解析器，在将数据库列类型转换为Java类型时
+             如果想要将 DECIMAL、NUMERIC 转换为 BigDecimal，则将 forceBigDecimals 属性设置为 true -->
+        <javaTypeResolver >
+            <property name="forceBigDecimals" value="false" />
         </javaTypeResolver>
 
-        <!-- 配置生成的Java Model类要放在哪个目录哪个包中 -->
-        <javaModelGenerator targetPackage="life.majiang.community.model" targetProject="src/main/java">
-            <property name="enableSubPackages" value="true"/>
-            <property name="trimStrings" value="true"/>
+        <!-- Java 模型生成器
+            targetPackage - 指定生成类存放的包
+            targetProject - 代码目录
+            enableSubPackages - 该属性用于选择MyBatis Generator是否根据内省表的目录和模式为对象生成不同的Java包。
+                                例如，假设模式 MYSCHMA 中有一个表 MYTABLE。还假设 targetPackage 属性设置为“com.mycompany”。
+                                如果此属性为 true，则为表生成的对象将放置在包“com.mycompany.myschema”中。
+                                如果该属性为 false，则生成的对象将放置在“com.mycompany”架构中。
+            trimStrings - 该属性用于选择 MyBatis Generator 是否添加代码来修剪从数据库返回的字符字段中的空格。如果您的数据库将数据存储在 CHAR 字段而不是 VARCHAR 字段中，这会很有用。
+
+         -->
+        <javaModelGenerator targetPackage="life.majiang.community.mbg.model" targetProject="src/main/java">
+            <property name="enableSubPackages" value="true" />
+            <property name="trimStrings" value="true" />
         </javaModelGenerator>
 
-        <!-- 配置生成的mapper.xml存放位置 -->
-        <sqlMapGenerator targetPackage="mapper" targetProject="src/main/resources">
-            <property name="enableSubPackages" value="true"/>
+        <!-- SQL mapper.xml 生成器 -->
+        <sqlMapGenerator targetPackage="mapper"  targetProject="src/main/resources">
+            <property name="enableSubPackages" value="true" />
         </sqlMapGenerator>
 
-        <!-- ava 客户端生成器构建 Java 接口和类，以便轻松使用生成的 Java 模型和 XML 映射文件。 -->
-        <javaClientGenerator type="XMLMAPPER" targetPackage="life.majiang.community.mapper" targetProject="src/main/java">
-            <property name="enableSubPackages" value="true"/>
+        <!-- Java 客户端生成器构建 Java 接口和类，以便轻松使用生成的 Java 模型和 XML 映射文件。 -->
+        <javaClientGenerator type="XMLMAPPER" targetPackage="life.majiang.community.mbg.mapper"  targetProject="src/main/java">
+            <property name="enableSubPackages" value="true" />
         </javaClientGenerator>
 
-        <!-- 配置要扫描哪些表生成文件 -->
-        <table tableName="cuser" domainObjectName="User"/>
-        <table tableName="question" domainObjectName="Question"/>
+        <!-- 指定要对哪些表生成类 -->
+        <table tableName="C_USER" domainObjectName="User" />
+        <table tableName="QUESTION" domainObjectName="Question" />
+
     </context>
 </generatorConfiguration>

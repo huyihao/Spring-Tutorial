@@ -9,13 +9,29 @@ body {
     float: right;
     margin-bottom: 15px;
 }
+/*头像大小*/
+/*.media-object {*/
+/*    width: 64px;*/
+/*}*/
 .text-desc {
     font-size: 12px;
     font-weight: normal;
     color: #999;
 }
-.media-object {
-    width: 64px;
+.text-color-999 {
+    color: #999;
+}
+.question-list {
+    padding-bottom: 15px;
+}
+.question-tags {
+    display: inline-block;
+    padding: 0 5px;
+    height: 20px;
+    line-height: 20px;
+    background-color: #f2f2f2;
+    font-size: 12px;
+    color: #999;
 }
 .comm-pagination {
     float: right;
@@ -28,4 +44,86 @@ body {
     color: #999;
     font-size: 13px;
     margin-bottom: 15px;
+}
+.question-content {
+    white-space: pre-wrap;
+}
+.question-title {
+    margin-top: 20px;
+}
+.question-block {
+    padding: 10px 20px 20px 20px;
+    border-right: 1px solid #e6e6e6;
+}
+.topic-tag {
+    float: left;
+    margin: 0 5px 5px 0;
+}
+.topic-tag a {
+    display: inline-block;
+    height: 20px;
+    line-height: 16px;
+    padding: 2px 5px;
+    background-color: #99cfff;
+    font-size: 12px;
+    color: #fff;
+    border-radius: 4px;
+}
+/* 头像大小 */
+.big-avatar {
+    width: 64px;
+}
+.middle-avatar {
+    width: 48px;
+}
+.small-avatar {
+    width: 32px;
+}
+/* 超链接 */
+.cursor-link {
+    cursor: pointer;
+}
+.cursor-link:link {
+    text-decoration:none;
+}
+.cursor-link:hover {
+    color: #499ef3;
+    text-decoration:none;
+}
+/* 颜色 */
+.background-color-eee {
+    background-color: #eee;
+}
+/* 内外边距 */
+.com-margin-top {
+    margin-top: 15px;
+}
+
+
+.comment-user {
+    margin: 10px 0;
+}
+.comment-text {
+    margin-bottom: 6px;
+    line-height: 160%;
+}
+.comment-content {
+    margin: 15px 0;
+}
+.comment-hr {
+    margin: 15px 0;
+    border: 0;
+    border-top: 1px solid #eee;
+}
+.icon {
+    margin-right: 3px;
+}
+.icon-num {
+    margin-left: -3px;
+}
+.sub-comments {
+    margin-top: 15px;
+    padding: 25px 15px 15px 15px;
+    border: 1px solid #a59999;
+    border-radius: 5px;
 }

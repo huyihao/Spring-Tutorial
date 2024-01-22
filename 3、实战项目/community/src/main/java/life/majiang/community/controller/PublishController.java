@@ -1,30 +1,31 @@
 package life.majiang.community.controller;
 
 import life.majiang.community.dto.QuestionDTO;
+import life.majiang.community.service.QuestionService;
 import life.majiang.community.model.Question;
 import life.majiang.community.model.User;
-import life.majiang.community.service.QuestionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.HttpServletRequest;
 
 @Controller
-@RequestMapping()
 public class PublishController {
 
     @Autowired
-    private QuestionService questionService;
+    QuestionService questionService;
 
     @GetMapping("/publish")
     public String publish(HttpServletRequest request) {
-        if (request.getSession() == null || request.getSession().getAttribute("user") == null) {
+        if (request.getSession() != null && request.getSession().getAttribute("user") == null) {
             return "redirect:/";
         }
-
         return "publish";
     }
 
@@ -32,7 +33,7 @@ public class PublishController {
     public String doPublish(@RequestParam(value = "title") String title,
                             @RequestParam(value = "description") String description,
                             @RequestParam(value = "tag") String tag,
-                            @RequestParam(value = "id") Integer id,
+                            @RequestParam(value = "id", required = false) Long id,
                             HttpServletRequest request,
                             Model model) {
         // 方便页面回显，这样页面已经填了的信息不用再重填一次
@@ -54,7 +55,6 @@ public class PublishController {
             return "publish";
         }
 
-
         // 如果cookie中不存在token，或根据token查无用户，则返回报错
         if (request.getSession() == null || request.getSession().getAttribute("user") == null) {
             model.addAttribute("error", "用户未登录");
@@ -71,15 +71,13 @@ public class PublishController {
         question.setGmtModified(question.getGmtCreate());
         question.setCreator(user.getId());
         question.setTag(tag);
-
         questionService.createOrUpdate(question);
-        //questionMapper.insert(question);
 
         return "redirect:/";
     }
 
     @GetMapping("/publish/{id}")
-    public String edit(@PathVariable(name = "id") Integer id,
+    public String edit(@PathVariable(name = "id") Long id,
                        Model model) {
         QuestionDTO questionDTO = questionService.getById(id);
 

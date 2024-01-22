@@ -1,1 +1,0 @@
-alter table CUSER add AVATAR_URL VARCHAR(100);
