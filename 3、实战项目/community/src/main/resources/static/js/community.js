@@ -198,3 +198,30 @@ function like(e) {
         });
     }
 }
+
+$(document).ready(function () {
+    /**
+     * 显示问题标签面板
+     */
+    const tag = $("#tag");
+    tag.click(function () {
+        $('.publish-tag-panel').show();
+    });
+
+    tag.focus(function () {
+        $('.publish-tag-panel').show();
+    });
+});
+
+// 选择标签
+function selectTag(e) {
+    var value = e.getAttribute("data-tag");
+    var previous = $("#tag").val();
+    if (previous.indexOf(value) === -1) {
+        if (previous) {
+            $("#tag").val(previous + "," + value);
+        } else {
+            $("#tag").val(value);
+        }
+    }
+}

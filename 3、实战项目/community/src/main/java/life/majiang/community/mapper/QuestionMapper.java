@@ -16,7 +16,7 @@ public interface QuestionMapper {
     List<Question> list();
 
     // 查询分页问题列表
-    @Select("select * from question limit #{offset}, #{size}")
+    @Select("select * from question order by gmt_modified desc limit #{offset}, #{size}")
     List<Question> listPage(@Param("offset") Integer offset, @Param("size") Integer size);
 
     // 获取总记录条数
@@ -26,18 +26,26 @@ public interface QuestionMapper {
     @Select("select * from question where creator = #{creator} limit #{offset}, #{size}")
     List<Question> userListPage(@Param("creator") Long creator, @Param("offset") Integer offset, @Param("size") Integer size);
 
+    // 查询用户提出的问题数
     @Select("select count(1) from question where creator = #{creator}")
     Integer userCount(@Param("creator") Long creator);
 
+    // 查询问题详情
     @Select("select * from question where id = #{id}")
     Question getById(@Param("id") Long id);
 
+    // 编辑更新问题信息
     @Update("update question set title = #{title}, description = #{description}, gmt_modified = #{gmtModified}, tag = #{tag} where id = #{id}")
     Integer update(Question question);
 
+    // 问题阅读数更新
     @Update("update question set view_count = view_count + 1 where id = #{id}")
     Integer incView(@Param("id") Long id);
 
+    // 问题评论数更新
     @Update("update question set comment_count = comment_count + #{commentCount} where id = #{id}")
     Integer updateCommentCount(Question question);
+
+    @Select("select id, title from question where id != #{id} and tag regexp #{tag}")
+    List<Question> selectRelated(Question question);
 }
