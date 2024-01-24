@@ -23,7 +23,7 @@ public interface QuestionMapper {
     @Select("select count(1) from question")
     Integer count();
 
-    @Select("select * from question where creator = #{creator} limit #{offset}, #{size}")
+    @Select("select * from question where creator = #{creator} order by gmt_modified desc limit #{offset}, #{size}")
     List<Question> userListPage(@Param("creator") Long creator, @Param("offset") Integer offset, @Param("size") Integer size);
 
     // 查询用户提出的问题数
