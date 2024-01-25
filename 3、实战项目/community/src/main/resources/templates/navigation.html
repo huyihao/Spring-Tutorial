@@ -21,6 +21,9 @@
                         <button type="submit" class="btn btn-default">搜索</button>
                     </form>
                     <ul class="nav navbar-nav navbar-right">
+                        <li th:if="${session.user != null}">
+                            <a href="/profile/replies">消息 <span th:if="${session.user != null}" th:text="${session.unreadCount}" class="badge" style="margin-bottom: 2px">42</span></a>
+                        </li>
                         <li th:if="${session.user != null}"><a href="/publish">提问</a></li>
                         <li th:if="${session.user == null}"><a href="https://github.com/login/oauth/authorize?client_id=ce46b85af14a2d21447b&redirect_uri=http://localhost:8080/callback&scope=user&state=2">登录</a></li>
                         <li th:if="${session.user != null}" class="dropdown">
@@ -88,6 +91,22 @@
                     </span>
                 </span>
             </div>
+        </div>
+    </div>
+
+    <div th:fragment="profileReplyList">
+        <div class="media" th:each="notification : ${pagination.data}">
+            <div class="media-body">
+                <p class="media-heading">
+                    <a class="notify-text" th:text="${notification.notifierName}"></a>
+                    <span th:text="${notification.typeName}"></span>
+                    <a class="notify-text" th:text="${notification.outerTitle}"
+                                           th:href="@{'/notification/' + ${notification.id}}"></a>
+                    <span class="label label-danger" th:if="${notification.status == 0}">未读</span>
+                    <span class="notify-time" th:text="${#dates.format(notification.gmtCreate,'yyyy-MM-dd HH:mm')}"></span>
+                </p>
+            </div>
+            <hr>
         </div>
     </div>
 

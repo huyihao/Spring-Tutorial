@@ -46,7 +46,7 @@ public class CommentController {
         comment.setLikeCount(0L);
         comment.setCommentCount(0);
 
-        commentService.addComment(comment);
+        commentService.addComment(comment, user);
 
         CommentDTO commentDTO = new CommentDTO();
         BeanUtils.copyProperties(comment, commentDTO);

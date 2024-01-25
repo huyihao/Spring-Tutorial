@@ -194,3 +194,18 @@ body {
 .tag-panel .tab-content {
     margin-top: 10px;
 }
+
+.notify-text {
+    font-size: 14px;
+    font-weight: normal;
+    color: #337ab7;;
+    text-decoration-line: none;
+}
+.notify-text:hover {
+    cursor: pointer;
+    text-decoration-line: none;
+}
+.notify-time {
+    display: block;
+    margin-top: 10px
+}

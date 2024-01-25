@@ -6,9 +6,23 @@
     <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="/css/bootstrap-theme.min.css"/>
     <link rel="stylesheet" type="text/css" href="/css/community.css"/>
+    <link rel="stylesheet" type="text/css" href="/editormd/css/editormd.css" />
     <script type="application/javascript" src="/js/jquery-3.4.1.min.js"></script>
     <script type="application/javascript" src="/js/bootstrap.min.js"></script>
+    <script type="application/javascript" src="/editormd/editormd.min.js"></script>
     <script type="application/javascript" src="/js/community.js"></script>
+    <script type="text/javascript">
+        $(function() {
+            var editor = editormd("question-editor", {
+                width  : "100%",
+                height : 300,
+                path   : "/editormd/lib/",
+                placeholder : "请输入问题描述",
+                delay : 0,
+                watch : false
+            });
+        });
+    </script>
 </head>
 <body>
 
@@ -29,9 +43,12 @@
                            autocomplete="off"
                            th:value="${title}">
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="margin-bottom: 0">
                     <label for="description">问题补充（必填，请参照右侧提示）:</label>
-                    <textarea class="form-control" id="description" name="description" rows="10" cols="30" th:text="${description}"></textarea>
+<!--                    <textarea class="form-control" id="description" name="description" rows="10" cols="30" th:text="${description}"></textarea>-->
+                </div>
+                <div class="form-group" id="question-editor">
+                    <textarea class="form-control" id="description" name="description" rows="10" cols="30" th:text="${description}" style="display:none;"></textarea>
                 </div>
                 <div class="form-group">
                     <label for="tag">添加标签：</label>

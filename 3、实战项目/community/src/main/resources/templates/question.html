@@ -6,9 +6,13 @@
     <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="/css/bootstrap-theme.min.css"/>
     <link rel="stylesheet" type="text/css" href="/css/community.css"/>
+    <link rel="stylesheet" type="text/css" href="/editormd/css/editormd.preview.css" />
     <script type="application/javascript" src="/js/jquery-3.4.1.min.js"></script>
     <script type="application/javascript" src="/js/bootstrap.min.js"></script>
     <script type="application/javascript" src="/js/community.js"></script>
+    <script type="application/javascript" src="/editormd/editormd.min.js"></script>
+    <script type="application/javascript" src="/editormd/lib/marked.min.js"></script>
+    <script type="application/javascript" src="/editormd/lib/prettify.min.js"></script>
 </head>
 <body>
 
@@ -28,17 +32,23 @@
                 </span><br>
                 <hr style="margin-top: 10px"/>
 
-                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 question-content no-padding " th:text="${question.description}">
+                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 question-content no-padding" id="question-view">
+                    <textarea style="display: none" th:text="${question.description}"></textarea>
                 </div>
+                <script type="text/javascript">
+                    $(function() {
+                        editormd.markdownToHTML("question-view", {});
+                    });
+                </script>
 
-                <hr class="col-lg-12 col-md-12 col-sm-12 col-xs-12" style="margin-bottom: 15px"/>
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 no-padding">
+                    <hr/>
                     <span class="label label-info topic-tag" th:each="tag : ${question.tag.split(',')}">
                         <span class="glyphicon glyphicon-tags"></span>
                         <span class="community-tag" th:text="${tag}"></span>
                     </span>
+                    <hr class="col-lg-12 col-md-12 col-sm-12 col-xs-12 no-padding">
                 </div>
-                <hr class="col-lg-12 col-md-12 col-sm-12 col-xs-12" style="margin-top: 15px"/>
 
                 <a th:if="${session.user != null && session.user.id == question.creator}"
                    th:href="@{'/publish/'+${question.id}}" class="community-menu">
@@ -132,11 +142,11 @@
                 <div class="media">
                     <div class="media-left">
                         <a href="#">
-                            <img class="media-object img-rounded small-avatar" id="userAvatar" th:src="${question.user != null ? question.user.avatarUrl : '/images/xhy.jpg'}">
+                            <img class="media-object img-rounded small-avatar" id="userAvatar" th:src="${session.user != null ? session.user.avatarUrl : '/images/xhy.jpg'}">
                         </a>
                     </div>
                     <div class="media-body">
-                        <h5 class="media-heading comment-user" id="userName" th:text="${question.user != null ? question.user.name : '匿名'}"></h5>
+                        <h5 class="media-heading comment-user" id="userName" th:text="${session.user != null ? session.user.name : '匿名'}"></h5>
                         <span class="text-desc">
                     </span>
                     </div>
