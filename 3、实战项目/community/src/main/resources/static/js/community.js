@@ -225,3 +225,16 @@ function selectTag(e) {
         }
     }
 }
+
+function toggleToc(e) {
+    var openToc = e.getAttribute("open-toc");
+    if (openToc === "true") {
+        $("#sidebar").hide();
+        $(e).text("打开目录");
+        e.setAttribute("open-toc", false);
+    } else {
+        $("#sidebar").show();
+        $(e).text("关闭目录");
+        e.setAttribute("open-toc", true);
+    }
+}
