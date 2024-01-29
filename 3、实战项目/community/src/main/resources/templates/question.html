@@ -16,7 +16,8 @@
     <script type="text/javascript">
         $(function() {
             editormd.markdownToHTML("question-view", {
-                tocContainer : "#custom-toc-container"
+                tocContainer : "#custom-toc-container",
+                htmlDecode : true,
             });
         });
     </script>

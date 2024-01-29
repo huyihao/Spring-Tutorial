@@ -19,7 +19,12 @@
                 path   : "/editormd/lib/",
                 placeholder : "请输入问题描述",
                 delay : 0,
-                watch : false
+                watch : false,
+                /* 图片上传 */
+                imageUpload    : true,
+                imageFormats   : ["jpg", "jpeg", "gif", "png", "bmp", "webp"],
+                imageUploadURL : "/file/upload",
+                htmlDecode : true,
             });
         });
     </script>
@@ -30,7 +35,7 @@
 
 <div class="container-fluid main">
     <div class="row">
-        <div class="col-lg-9 col-md-12 col-sm-12 col-xs-12" style="padding: 10px 30px">
+        <div class="col-lg-9 col-md-12 col-sm-12 col-xs-12" id="edit-panel" style="padding: 10px 30px">
             <h2><span class="glyphicon glyphicon-plus" aria-hidden="true"></span>发起</h2>
             <hr>
 
@@ -57,7 +62,7 @@
                            autocomplete="off"
                            th:value="${tag}">
                 </div>
-                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 publish-tag-panel" th:class="${error != null ? 'active' : ''}">
+                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 publish-tag-panel" id="pub-tag">
                     <!-- Nav tabs -->
                     <ul class="nav nav-tabs" role="tablist" style="margin-bottom: 5px">
                         <li role="presentation" th:each="selectCategory,iterStat : ${tags}"

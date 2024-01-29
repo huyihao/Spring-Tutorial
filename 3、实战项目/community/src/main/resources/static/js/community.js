@@ -205,12 +205,17 @@ $(document).ready(function () {
      */
     const tag = $("#tag");
     tag.click(function () {
-        $('.publish-tag-panel').show();
+        $("#pub-tag").show();
     });
 
     tag.focus(function () {
-        $('.publish-tag-panel').show();
+        $("#pub-tag").show();
     });
+
+    $("#edit-panel").mouseleave(function () {
+        $("#pub-tag").hide();
+    });
+
 });
 
 // 选择标签
